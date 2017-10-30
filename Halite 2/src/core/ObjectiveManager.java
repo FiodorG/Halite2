@@ -1,10 +1,6 @@
 package core;
 
-import hlt.Entity;
-import hlt.GameMap;
-import hlt.Planet;
-import hlt.Player;
-
+import hlt.*;
 import java.util.*;
 
 public class ObjectiveManager
@@ -20,8 +16,6 @@ public class ObjectiveManager
 
     public ArrayList<Objective> getObjectives() { return objectives; }
 
-    public void clearObjectives() { this.objectives.clear(); }
-
     public void getObjectives(final GameMap gameMap, final DistanceManager distanceManager)
     {
         Map<Integer, Planet> planets = gameMap.getAllPlanets();
@@ -34,7 +28,7 @@ public class ObjectiveManager
 
             // First make sure we fill slots in owned planets
             if (planet.getOwner() == myId && !planet.isFull())
-                objective = new Objective(planet, 2 * getPlanetPriority(planet), planet.getDockingSpots(), Objective.OrderType.COLONIZE);
+                objective = new Objective(planet, 2 * getPlanetPriority(planet), planet.getFreeDockingSpots(), Objective.OrderType.COLONIZE);
 
             // Then get new planets
             else if (!planet.isOwned())
@@ -52,10 +46,15 @@ public class ObjectiveManager
         }
 
         sortObjectives();
+        logObjectives();
     }
 
-    private void sortObjectives() {
-        this.objectives.sort(Comparator.comparingDouble(Objective::getPriority).reversed());
+    public void clearObjectives() { this.objectives.clear(); }
+    private void sortObjectives()  { this.objectives.sort(Comparator.comparingDouble(Objective::getPriority).reversed()); }
+    private void logObjectives()
+    {
+        for(final Objective objective: this.objectives)
+            DebugLog.addLog(objective.toString());
     }
 
     private int getPlanetPriority(Planet planet)
