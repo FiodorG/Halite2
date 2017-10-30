@@ -18,4 +18,16 @@ public class ThrustMove extends Move {
     public int getThrust() {
         return thrust;
     }
+    
+    public Double dX() {
+    	Double angleRad = Math.toRadians((double) angleDeg);
+    	
+        return thrust * Math.cos(angleRad)  ;
+    }
+    
+    public Double dY() {
+    	Double angleRad = Math.toRadians((double) angleDeg);
+    	
+        return thrust * Math.sin(angleRad)  ;
+    }
 }
