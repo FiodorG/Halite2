@@ -35,17 +35,14 @@ public class Planet extends Entity
     @Override
     public boolean equals(Object object)
     {
-        if (this == object)
-            return true;
-
         if (object == null || object.getClass() != getClass())
             return false;
 
-        Planet planet = (Planet) object;
+        if (this == object)
+            return true;
 
-        return (this.getId() == (planet.getId())) &&
-                (this.getXPos() == (planet.getXPos())) &&
-                (this.getYPos() == (planet.getYPos()));
+        Planet planet = (Planet) object;
+        return (this.getId() == (planet.getId()));
     }
 
     @Override

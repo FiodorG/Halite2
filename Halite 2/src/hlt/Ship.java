@@ -41,14 +41,13 @@ public class Ship extends Entity
     @Override
     public boolean equals(Object object)
     {
-        if (this == object)
-            return true;
-
         if (object == null || object.getClass() != getClass())
             return false;
 
-        Ship ship = (Ship) object;
+        if (this == object)
+            return true;
 
+        Ship ship = (Ship) object;
         return (this.getId() == (ship.getId())) && (this.getOwner() == (ship.getOwner()));
     }
 

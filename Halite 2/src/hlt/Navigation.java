@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class Navigation {
-
+public class Navigation
+{
     public static ThrustMove navigateShipToDock(
             final GameMap gameMap,
             final Ship ship,
@@ -29,7 +29,6 @@ public class Navigation {
         final int maxCorrections = 1;
         final boolean avoidObstacles = false;
         final double angularStepRad = Math.PI/180.0;
-      //  final Position targetPos = ship.getClosestPoint(crashTarget);
  
         return navigateShipTowardsTarget(gameMap, ship, crashTarget, maxThrust, avoidObstacles, maxCorrections, angularStepRad);
     }
@@ -43,7 +42,6 @@ public class Navigation {
         final int maxCorrections = Constants.MAX_NAVIGATION_CORRECTIONS;
         final boolean avoidObstacles = true;
         final double angularStepRad = Math.PI/180.0;
-       // final Position targetPos = ship.getClosestPoint(attackTarget);
  
         return navigateShipTowardsTarget(gameMap, ship, attackTarget, maxThrust, avoidObstacles, maxCorrections, angularStepRad);
     }
@@ -76,19 +74,20 @@ public class Navigation {
         return navigateTowards3(gameMap, ship, targetPos, maxThrust, avoidObstacles,maxCorrections);
     }
     
-    public static ThrustMove navigateShipToDock_4(
-            final GameMap gameMap,
-            final Ship ship,
-            final Entity dockTarget,
-            final int maxThrust)
-    {
-        final int maxCorrections = Constants.MAX_NAVIGATION_CORRECTIONS;
-        final boolean avoidObstacles = true;
-        final double angularStepRad = Math.PI/180.0;
-        final Position targetPos = ship.getClosestPoint(dockTarget);
+//    public static ThrustMove navigateShipToDock_4(
+//            final GameMap gameMap,
+//            final Ship ship,
+//            final Entity dockTarget,
+//            final int maxThrust)
+//    {
+//        final int maxCorrections = Constants.MAX_NAVIGATION_CORRECTIONS;
+//        final boolean avoidObstacles = true;
+//        final double angularStepRad = Math.PI/180.0;
+//        final Position targetPos = ship.getClosestPoint(dockTarget);
+//
+//        return navigateTowardPotential(gameMap, ship, targetPos, maxThrust);
+//    }
 
-        return navigateTowardPotential(gameMap, ship, targetPos, maxThrust);
-    }
     public static ThrustMove navigateShipTowardsTarget(
             final GameMap gameMap,
             final Ship ship,
@@ -225,106 +224,42 @@ public class Navigation {
         return new ThrustMove(ship, angleDeg, thrust);
     
 		}
-    
-    public static ArrayList<Move> resolveMoves(ArrayList<Move> moveList){
-    	
-    	int N =  moveList.size();
-    	Move m1;
-    	Move m2;
-    	for(int i = 0; i< N ; i++) {
-    		m1 = moveList.get(i);
-    		for(int j = 0; j < i; j ++) {
-    			m2 = moveList.get(j);
-    			
-    			Boolean eitherDocking = m1.getType() == Move.MoveType.Dock ||m2.getType() == Move.MoveType.Dock;
-    	    	Boolean eitherUnDocking = m1.getType() == Move.MoveType.Undock ||m2.getType() == Move.MoveType.Undock;
-    	    	Boolean eitherStopped = m1.getType() == Move.MoveType.Noop ||m2.getType() == Move.MoveType.Noop;
-    	    	
-    	    	if(eitherDocking ||eitherUnDocking || eitherStopped ) {
-    	    		continue;
-    	    	}else {
-    	    		ThrustMove t1 = (ThrustMove) m1;
-    	    		ThrustMove t2 = (ThrustMove) m2;
-    	    		
-    	    		if(willCollide(t1,t2)) {
-    	    			moveList.set(j, new ThrustMove(m2.getShip(),0,0));
-    	    		}
-    	    	}
-    			
-    		}
-    	}
-    	return moveList;
-    	
-    	
-    	
-    }
-    
-    public static boolean willCollide(ThrustMove m1,ThrustMove m2) {
-    	
-    	
-    	VectorBasic v1 = new VectorBasic(m1.getShip().getXPos(),m1.getShip().getYPos());
-    	VectorBasic v2 = new VectorBasic(m2.getShip().getXPos(),m2.getShip().getYPos());
-    	
-    	VectorBasic r1 = new VectorBasic(m1.dX(),m1.dY());
-    	VectorBasic r2 = new VectorBasic(m2.dX(),m2.dY());
-    	
-    	Double cross = r1.cross(r2);
-    	VectorBasic diff = v1.subtract(v2);
-    	
-    	if(cross < 0.01 && cross > -0.01 ) {
-    		return false;
-    	}
-    	
-    	Double c1 = diff.cross(r1);
-    	Double c2 = diff.cross(r2);
-    	
-    	Double t = -c1/cross;
-    	Double u = -c2/cross;
-    	
-    	if ( t > 0 && t < 1 && u > 0 && u < 1 ) {
-    		return true;
-    	}else {
-    		return false;
-    	}
-    	
-    }
-    
-    public static ThrustMove navigateTowardPotential(final GameMap gameMap,Ship ship, final Position targetPos, final int maxThrust) {
-		
-    	double distance = ship.getDistanceTo(targetPos);
-		double angleRad = ship.orientTowardsInRad(targetPos);
 
-    	// we just sum over all the forces
-		
-		Map<Integer, Planet> allPlanets = gameMap.getAllPlanets();
-		
-		VectorBasic force = new VectorBasic();
-		long i = 0;
-		for (Integer key : allPlanets.keySet()) {
-		    Planet planet = allPlanets.get(key);
-		    
-		    force = VectorBasic.subtract(force, Potential.force(planet, ship));
-		}
-		
-		force = force.add(Potential.force(targetPos, ship));
-		force = force.add(Potential.force(targetPos, ship));
-		
-		double angRad  = Math.atan2(force.y, force.x);
-		int angleDeg = Util.angleRadToDegClipped(angRad);
-
-		final int thrust;
-        if (distance < maxThrust) {
-            // Do not round up, since overshooting might cause collision.
-            thrust = (int) distance;
-        }
-        else {
-            thrust = maxThrust;
-        }
-
-		
-		ThrustMove move = new ThrustMove(ship, angleDeg, thrust);
-		
-		return move;
-    }
-    
+//    public static ThrustMove navigateTowardPotential(final GameMap gameMap,Ship ship, final Position targetPos, final int maxThrust) {
+//
+//    	double distance = ship.getDistanceTo(targetPos);
+//		double angleRad = ship.orientTowardsInRad(targetPos);
+//
+//    	// we just sum over all the forces
+//
+//		Map<Integer, Planet> allPlanets = gameMap.getAllPlanets();
+//
+//		VectorBasic force = new VectorBasic();
+//		long i = 0;
+//		for (Integer key : allPlanets.keySet()) {
+//		    Planet planet = allPlanets.get(key);
+//
+//		    force = VectorBasic.subtract(force, Potential.force(planet, ship));
+//		}
+//
+//		force = force.add(Potential.force(targetPos, ship));
+//		force = force.add(Potential.force(targetPos, ship));
+//
+//		double angRad  = Math.atan2(force.y, force.x);
+//		int angleDeg = Util.angleRadToDegClipped(angRad);
+//
+//		final int thrust;
+//        if (distance < maxThrust) {
+//            // Do not round up, since overshooting might cause collision.
+//            thrust = (int) distance;
+//        }
+//        else {
+//            thrust = maxThrust;
+//        }
+//
+//
+//		ThrustMove move = new ThrustMove(ship, angleDeg, thrust);
+//
+//		return move;
+//    }
 }

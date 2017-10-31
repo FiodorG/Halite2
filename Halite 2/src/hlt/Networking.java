@@ -4,17 +4,20 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class Networking {
-
+public class Networking
+{
     private static final char UNDOCK_KEY = 'u';
     private static final char DOCK_KEY = 'd';
     private static final char THRUST_KEY = 't';
 
-    public static void sendMoves(final Iterable<Move> moves) {
+    public static void sendMoves(final Iterable<Move> moves)
+    {
         final StringBuilder moveString = new StringBuilder();
 
-        for (final Move move : moves) {
-            switch (move.getType()) {
+        for (final Move move : moves)
+        {
+            switch (move.getType())
+            {
                 case Noop:
                     continue;
                 case Undock:
@@ -46,7 +49,8 @@ public class Networking {
         System.out.println(moveString);
     }
 
-    private static String readLine() {
+    private static String readLine()
+    {
         try {
             StringBuilder builder = new StringBuilder();
             int buffer;
@@ -69,16 +73,17 @@ public class Networking {
         }
     }
 
-    public static Metadata readLineIntoMetadata() {
-        return new Metadata(readLine().trim().split(" "));
-    }
+    public static Metadata readLineIntoMetadata() { return new Metadata(readLine().trim().split(" ")); }
     
-    public GameMap initialize(final String botName) {
+    public GameMap initialize(final String botName)
+    {
         final int myId = Integer.parseInt(readLine());
-        try {
+        try
+        {
             DebugLog.initialize(new FileWriter(String.format("%d - %s.log", myId, botName)));
         }
-        catch (IOException e) {
+        catch (IOException e)
+        {
             e.printStackTrace();
         }
 
