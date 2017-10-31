@@ -18,10 +18,21 @@ public class ObjectiveManager
 
     public void getObjectives(final GameMap gameMap, final DistanceManager distanceManager)
     {
+        clearObjectives();
+
+        this.objectives.addAll(getColonizeObjectives(gameMap, distanceManager));
+        //this.objectives.addAll(getAttackObjectives(gameMap, distanceManager));
+
+        sortObjectives();
+        logObjectives();
+    }
+
+    private ArrayList<Objective> getColonizeObjectives(final GameMap gameMap, final DistanceManager distanceManager)
+    {
         Map<Integer, Planet> planets = gameMap.getAllPlanets();
         final int myId = gameMap.getMyPlayerId();
 
-        clearObjectives();
+        ArrayList<Objective> objectives = new ArrayList<>();
         for(final Planet planet : planets.values())
         {
             Objective objective;
@@ -35,18 +46,44 @@ public class ObjectiveManager
                 objective = new Objective(planet, getPlanetPriority(planet), planet.getDockingSpots(), Objective.OrderType.COLONIZE);
 
             // Then crash into full enemy planets
-            // else if (planet.getOwner() != myId && planet.isFull())
-            //    objective = new Objective(planet, getPlanetPriority(planet), (int)(planet.getRadius() * 2), Objective.OrderType.CRASHINTO);
+            else if (planet.getOwner() != myId)
+                objective = new Objective(planet, 200, (int)(planet.getRadius() * 2), Objective.OrderType.CRASHINTO);
 
             else
                 continue;
 
-            //if(!this.objectives.contains(objective))
-            this.objectives.add(objective);
+            objectives.add(objective);
         }
 
-        sortObjectives();
-        logObjectives();
+        return objectives;
+    }
+
+    private ArrayList<Objective> getAttackObjectives(final GameMap gameMap, final DistanceManager distanceManager)
+    {
+        List<Ship> ships = gameMap.getAllShips();
+        final int myId = gameMap.getMyPlayerId();
+
+        ArrayList<Objective> objectives = new ArrayList<>();
+        for(final Ship ship : ships)
+        {
+            Objective objective;
+
+            // If own ship, don't do anything
+            if (ship.getOwner() == myId)
+                continue;
+
+            // Then go for docked ships
+            else if (ship.getDockingStatus() != Ship.DockingStatus.Undocked)
+                objective = new Objective(ship, 75, 2, Objective.OrderType.ATTACK);
+
+            // Go for other ships
+            else
+                objective = new Objective(ship, 50, 2, Objective.OrderType.ATTACK);
+
+            objectives.add(objective);
+        }
+
+        return objectives;
     }
 
     public void clearObjectives() { this.objectives.clear(); }

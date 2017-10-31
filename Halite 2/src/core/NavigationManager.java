@@ -31,9 +31,7 @@ public class NavigationManager
             {
                 Planet planet = (target instanceof Planet ? (Planet)target : null);
 
-                if(ship.getDockingStatus() != Ship.DockingStatus.Undocked)
-                    continue;
-                else if (ship.canDock(planet))
+                if (ship.canDock(planet))
                     newMove = new DockMove(ship, planet);
                 else
                     newMove = Navigation.navigateShipToDock(gameMap, ship, target, Constants.MAX_SPEED);
@@ -97,21 +95,33 @@ public class NavigationManager
         VectorBasic r1 = new VectorBasic(m1.dX(), m1.dY());
         VectorBasic r2 = new VectorBasic(m2.dX(), m2.dY());
 
+        VectorBasic p1 = v1.add(r1);
+        VectorBasic p2 = v2.add(r2);
+
+        VectorBasic newDiff = p1.subtract(p2);
+
         Double cross = r1.cross(r2);
         VectorBasic diff = v1.subtract(v2);
 
-        if (cross < 0.01 && cross > -0.01)
-            return false;
-
-        Double c1 = diff.cross(r1);
-        Double c2 = diff.cross(r2);
-
-        Double t = - c1 / cross;
-        Double u = - c2 / cross;
-
-        if (t > 0 && t < 1 && u > 0 && u < 1)
+        if(newDiff.length() < Constants.SHIP_RADIUS * 2)
+        {
             return true;
+        }
         else
-            return false;
+        {
+            if (cross < 0.01 && cross > -0.01)
+                return false;
+
+            Double c1 = diff.cross(r1);
+            Double c2 = diff.cross(r2);
+
+            Double t = - c1 / cross;
+            Double u = - c2 / cross;
+
+            if (t > 0 && t < 1 && u > 0 && u < 1)
+                return true;
+            else
+                return false;
+        }
     }
 }

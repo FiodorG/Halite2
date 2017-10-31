@@ -11,13 +11,11 @@ public class Timer
     private LocalDateTime currentTurnStartTime;
     private final double warmupTime = 30000; // in milliseconds
     private final double turnTime = 2000; // in milliseconds
-    private final boolean verboseMode;
 
-    public Timer(final boolean verboseMode)
+    public Timer()
     {
         this.startTime = LocalDateTime.now();
         this.currentTime = startTime;
-        this.verboseMode = verboseMode;
     }
 
     public void setCurrentTurnStartTime()
@@ -28,10 +26,7 @@ public class Timer
     public double getCurrentTurnElapsedTime()
     {
         double currentTurnElapsedTime = currentTurnStartTime.until(LocalDateTime.now(), ChronoUnit.MILLIS);
-
-        if (this.verboseMode)
-            DebugLog.addLog(Double.toString(currentTurnElapsedTime));
-
+        DebugLog.addLog(Double.toString(currentTurnElapsedTime));
         return currentTurnElapsedTime;
     }
 

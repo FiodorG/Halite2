@@ -31,4 +31,6 @@ public class VectorBasic
 
     public Double cross(VectorBasic v) { return x * (v.y) - y * (v.x); }
     public VectorBasic negate() { return new VectorBasic(- this.x, - this.y); }
+
+    public double length() { return Math.sqrt(x * x + y * y); }
 }

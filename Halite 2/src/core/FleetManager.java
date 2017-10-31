@@ -28,9 +28,6 @@ public class FleetManager
             if(availableShips.isEmpty())
                 return;
 
-            //if(objectiveAlreadyAssigned(objective))
-            //    continue;
-
             int requiredShips = objective.getRequiredShips();
             ArrayList<Ship> ships = new ArrayList<>();
 
@@ -50,15 +47,6 @@ public class FleetManager
         }
     }
 
-    private boolean objectiveAlreadyAssigned(final Objective objective)
-    {
-        for(final Fleet fleet: this.fleets)
-            if(fleet.getObjectives().contains(objective))
-                return true;
-
-        return false;
-    }
-
     private ArrayList<Ship> allAvailableShips(GameMap gameMap)
     {
         // For all purposes a docking ships will never be used again
@@ -68,16 +56,6 @@ public class FleetManager
         for(final Ship ship: gameMap.getMyPlayer().getShips().values())
             if (ship.getDockingStatus() == Ship.DockingStatus.Undocked)
                 allShips.add(ship);
-
-        return allShips;
-    }
-
-    private ArrayList<Ship> unassignedShips(GameMap gameMap)
-    {
-        ArrayList<Ship> allShips = allAvailableShips(gameMap);
-
-        for(final Fleet fleet: this.fleets)
-            allShips.removeAll(fleet.getShips());
 
         return allShips;
     }
