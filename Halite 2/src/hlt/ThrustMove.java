@@ -1,33 +1,29 @@
 package hlt;
 
-public class ThrustMove extends Move {
-
+public class ThrustMove extends Move
+{
     private final int angleDeg;
     private final int thrust;
 
-    public ThrustMove(final Ship ship, final int angleDeg, final int thrust) {
+    public ThrustMove(final Ship ship, final int angleDeg, final int thrust)
+    {
         super(MoveType.Thrust, ship);
         this.thrust = thrust;
         this.angleDeg = angleDeg;
     }
 
-    public int getAngle() {
-        return angleDeg;
-    }
-
-    public int getThrust() {
-        return thrust;
+    public int getAngle() { return angleDeg; }
+    public int getThrust() { return thrust; }
+    
+    public Double dX()
+    {
+    	Double angleRad = Math.toRadians((double) angleDeg);
+        return thrust * Math.cos(angleRad);
     }
     
-    public Double dX() {
+    public Double dY()
+    {
     	Double angleRad = Math.toRadians((double) angleDeg);
-    	
-        return thrust * Math.cos(angleRad)  ;
-    }
-    
-    public Double dY() {
-    	Double angleRad = Math.toRadians((double) angleDeg);
-    	
-        return thrust * Math.sin(angleRad)  ;
+        return thrust * Math.sin(angleRad);
     }
 }
