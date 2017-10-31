@@ -7,7 +7,7 @@ public class MyBot
 {
     public static void main(final String[] args)
     {
-        Timer timer                         = new Timer(Config.verbose);
+        Timer timer                         = new Timer();
         ObjectiveManager objectiveManager   = new ObjectiveManager(Config.behaviour);
         FleetManager fleetManager           = new FleetManager();
         NavigationManager navigationManager = new NavigationManager();
