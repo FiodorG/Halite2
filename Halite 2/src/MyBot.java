@@ -8,7 +8,9 @@ public class MyBot
     public static void main(final String[] args)
     {
         Timer timer                         = new Timer();
-        ObjectiveManager objectiveManager   = new ObjectiveManager(Config.behaviour);
+        GameState gameState                 = new GameState();
+        BehaviourManager behaviourManager   = new BehaviourManager(Config.behaviour, gameState);
+        ObjectiveManager objectiveManager   = new ObjectiveManager();
         FleetManager fleetManager           = new FleetManager();
         NavigationManager navigationManager = new NavigationManager();
         DistanceManager distanceManager     = new DistanceManager();
@@ -17,21 +19,21 @@ public class MyBot
         final GameMap gameMap               = networking.initialize(Config.botName);
         final ArrayList<Move> moveList      = new ArrayList<>();
 
-        int turn = 1;
         while(true)
         {
-            logNewTurn(turn++);
-            timer.setCurrentTurnStartTime();
+            //timer.setCurrentTurnStartTime();
+            gameState.updateGameState();
+            logNewTurn(gameState.getTurn());
 
             moveList.clear();
             gameMap.updateMap(Networking.readLineIntoMetadata());
 
             distanceManager.computeDistanceMatrices(gameMap);
-            objectiveManager.getObjectives(gameMap, distanceManager);
-            fleetManager.assignFleetsToObjectives(gameMap, objectiveManager.getObjectives(), distanceManager);
+            objectiveManager.getObjectives(gameMap, distanceManager, behaviourManager);
+            fleetManager.assignFleetsToObjectives(gameMap, objectiveManager.getObjectives(), distanceManager, behaviourManager);
             navigationManager.moveFleetsToObjective(gameMap, moveList, fleetManager.getFleets());
 
-            if (timer.timeToEndTurn()) break;
+            //if (timer.timeToEndTurn()) break;
 
             Networking.sendMoves(navigationManager.resolveMoves(moveList));
         }
