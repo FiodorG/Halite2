@@ -5,9 +5,10 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-public class MetadataParser {
-
-    public static void populateShipList(final List<Ship> shipsOutput, final int owner, final Metadata shipsMetadata) {
+public class MetadataParser
+{
+    public static void populateShipList(final List<Ship> shipsOutput, final int owner, final Metadata shipsMetadata)
+    {
         final long numberOfShips = Long.parseLong(shipsMetadata.pop());
 
         for(int i = 0; i < numberOfShips; ++i) {
@@ -15,7 +16,8 @@ public class MetadataParser {
         }
     }
 
-    private static Ship newShipFromMetadata(final int owner, final Metadata metadata) {
+    private static Ship newShipFromMetadata(final int owner, final Metadata metadata)
+    {
         final int id = Integer.parseInt(metadata.pop());
         final double xPos = Double.parseDouble(metadata.pop());
         final double yPos = Double.parseDouble(metadata.pop());
@@ -33,7 +35,8 @@ public class MetadataParser {
         return new Ship(owner, id, xPos, yPos, health, dockingStatus, dockedPlanet, dockingProgress, weaponCooldown);
     }
 
-    public static Planet newPlanetFromMetadata(final List<Integer> dockedShips, final Metadata metadata) {
+    public static Planet newPlanetFromMetadata(final List<Integer> dockedShips, final Metadata metadata)
+    {
         final int id = Integer.parseInt(metadata.pop());
         final double xPos = Double.parseDouble(metadata.pop());
         final double yPos = Double.parseDouble(metadata.pop());
