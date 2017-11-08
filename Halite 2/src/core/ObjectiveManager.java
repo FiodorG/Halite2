@@ -6,28 +6,30 @@ import java.util.*;
 public class ObjectiveManager
 {
     private ArrayList<Objective> objectives;
-    private BehaviourManager behaviourManager;
+    private int objectiveId;
 
-    public ObjectiveManager(final BehaviourManager.behaviourTypes behaviour)
+    public ObjectiveManager()
     {
-        this.behaviourManager = new BehaviourManager(behaviour);
         this.objectives = new ArrayList<>();
+        this.objectiveId = 0;
     }
 
     public ArrayList<Objective> getObjectives() { return objectives; }
 
-    public void getObjectives(final GameMap gameMap, final DistanceManager distanceManager)
+    public void getObjectives(final GameMap gameMap, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
         clearObjectives();
 
-        this.objectives.addAll(getColonizeObjectives(gameMap, distanceManager));
-        //this.objectives.addAll(getAttackObjectives(gameMap, distanceManager));
+        this.objectives.addAll(getColonizeObjectives(gameMap, distanceManager, behaviourManager));
+        this.objectives.addAll(getAttackObjectives(gameMap, distanceManager, behaviourManager));
+        // this.objectives.addAll(getDefendObjectives(gameMap, distanceManager, behaviourManager));
 
         sortObjectives();
         logObjectives();
+        // distanceManager.computeObjectivesDistanceMatrices(gameMap, this.objectives);
     }
 
-    private ArrayList<Objective> getColonizeObjectives(final GameMap gameMap, final DistanceManager distanceManager)
+    private ArrayList<Objective> getColonizeObjectives(final GameMap gameMap, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
         Map<Integer, Planet> planets = gameMap.getAllPlanets();
         final int myId = gameMap.getMyPlayerId();
@@ -39,15 +41,15 @@ public class ObjectiveManager
 
             // First make sure we fill slots in owned planets
             if (planet.getOwner() == myId && !planet.isFull())
-                objective = new Objective(planet, 2 * getPlanetPriority(planet), planet.getFreeDockingSpots(), Objective.OrderType.COLONIZE);
+                objective = new Objective(planet, behaviourManager.getPlanetPriorityForColonize(gameMap, distanceManager, planet), planet.getFreeDockingSpots(), Objective.OrderType.COLONIZE, this.objectiveId++);
 
             // Then get new planets
             else if (!planet.isOwned())
-                objective = new Objective(planet, getPlanetPriority(planet), planet.getDockingSpots(), Objective.OrderType.COLONIZE);
+                objective = new Objective(planet, behaviourManager.getPlanetPriorityForColonize(gameMap, distanceManager, planet), planet.getDockingSpots(), Objective.OrderType.COLONIZE, this.objectiveId++);
 
             // Then crash into full enemy planets
-            else if (planet.getOwner() != myId)
-                objective = new Objective(planet, 200, (int)(planet.getRadius() * 2), Objective.OrderType.CRASHINTO);
+//            else if (planet.getOwner() != myId)
+//                objective = new Objective(planet, behaviourManager.getPlanetPriorityForCrash(gameMap, distanceManager, planet), (int) planet.getRadius(), Objective.OrderType.CRASHINTO, this.objectiveId++);
 
             else
                 continue;
@@ -58,7 +60,7 @@ public class ObjectiveManager
         return objectives;
     }
 
-    private ArrayList<Objective> getAttackObjectives(final GameMap gameMap, final DistanceManager distanceManager)
+    private ArrayList<Objective> getAttackObjectives(final GameMap gameMap, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
         List<Ship> ships = gameMap.getAllShips();
         final int myId = gameMap.getMyPlayerId();
@@ -68,17 +70,17 @@ public class ObjectiveManager
         {
             Objective objective;
 
-            // If own ship, don't do anything
+            // If own ship, do nothing
             if (ship.getOwner() == myId)
                 continue;
 
             // Then go for docked ships
             else if (ship.getDockingStatus() != Ship.DockingStatus.Undocked)
-                objective = new Objective(ship, 75, 2, Objective.OrderType.ATTACK);
+                objective = new Objective(ship, behaviourManager.getDockedShipPriorityForAttack(gameMap, distanceManager, ship), 2, Objective.OrderType.ATTACK, this.objectiveId++);
 
             // Go for other ships
             else
-                objective = new Objective(ship, 50, 2, Objective.OrderType.ATTACK);
+                objective = new Objective(ship, behaviourManager.getShipPriorityForAttack(gameMap, distanceManager, ship), 2, Objective.OrderType.ATTACK, this.objectiveId++);
 
             objectives.add(objective);
         }
@@ -86,7 +88,11 @@ public class ObjectiveManager
         return objectives;
     }
 
-    public void clearObjectives() { this.objectives.clear(); }
+    public void clearObjectives()
+    {
+        this.objectives.clear();
+        this.objectiveId = 0;
+    }
     private void sortObjectives()  { this.objectives.sort(Comparator.comparingDouble(Objective::getPriority).reversed()); }
     private void logObjectives()
     {
@@ -94,8 +100,5 @@ public class ObjectiveManager
             DebugLog.addLog(objective.toString());
     }
 
-    private int getPlanetPriority(Planet planet)
-    {
-        return planet.getDockingSpots() * 100;
-    }
+
 }
