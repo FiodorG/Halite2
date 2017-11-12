@@ -26,4 +26,14 @@ public class ThrustMove extends Move
     	Double angleRad = Math.toRadians((double) angleDeg);
         return thrust * Math.sin(angleRad);
     }
+
+    @Override
+    public String toString()
+    {
+        return "ThrustMove[" +
+            super.toString() +
+            ", angleDeg=" + angleDeg +
+            ", thrust=" + thrust +
+            "]";
+    }
 }

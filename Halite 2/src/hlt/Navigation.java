@@ -11,7 +11,7 @@ public class Navigation
 {
     public static ThrustMove navigateShipToMove( final GameMap gameMap, final Ship ship, final Entity moveTarget, final int maxThrust)
     {
-        final int maxCorrections = Constants.MAX_NAVIGATION_CORRECTIONS;
+        final int maxCorrections = 180;
         final boolean avoidObstacles = true;
         final double angularStepRad = Math.PI/180.0;
         final double minimumDistance = moveTarget.getRadius() + ship.getRadius();
@@ -21,7 +21,7 @@ public class Navigation
 
     public static ThrustMove navigateShipToDock( final GameMap gameMap, final Ship ship, final Entity dockTarget, final int maxThrust)
     {
-        final int maxCorrections = Constants.MAX_NAVIGATION_CORRECTIONS;
+        final int maxCorrections = 180;
         final boolean avoidObstacles = true;
         final double angularStepRad = Math.PI/180.0;
         final double minimumDistance = dockTarget.getRadius() + ship.getRadius() + DOCK_RADIUS - 2.0;
@@ -31,8 +31,8 @@ public class Navigation
     
     public static ThrustMove navigateShipToCrashInto( final GameMap gameMap, final Ship ship, final Entity crashTarget, final int maxThrust)
     {
-        final int maxCorrections = 1;
-        final boolean avoidObstacles = false;
+        final int maxCorrections = 180;
+        final boolean avoidObstacles = true;
         final double angularStepRad = Math.PI/180.0;
         final double minimumDistance = 0;
  
@@ -41,9 +41,9 @@ public class Navigation
  
     public static ThrustMove navigateShipToAttack( final GameMap gameMap, final Ship ship, final Entity attackTarget, final int maxThrust)
     {
-        final int maxCorrections = Constants.MAX_NAVIGATION_CORRECTIONS;
+        final int maxCorrections = 180;
         final boolean avoidObstacles = true;
-        final double angularStepRad = Math.PI/180.0;
+        final double angularStepRad = Math.PI/90.0;
         final double minimumDistance = attackTarget.getRadius() + ship.getRadius() + WEAPON_RADIUS - 2.0;
  
         return navigateShipTowardsTarget(gameMap, ship, attackTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad);
