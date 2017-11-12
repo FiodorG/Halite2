@@ -13,13 +13,26 @@ public class FleetManager
 {
     private ArrayList<Fleet> fleets;
 
+    private ArrayList<Objective> unfilledSuperObjectives;
+    private ArrayList<Objective> filledSuperObjectives;
+    private ArrayList<Objective> assignedSuperObjectives;
+
+    private ArrayList<Objective> unfilledObjectives;
+    private ArrayList<Objective> filledObjectives;
+
+    private int fleetsAssignedToSuperObjectives;
+
     public FleetManager()
     {
         this.fleets = new ArrayList<>();
+        this.unfilledSuperObjectives = new ArrayList<>();
+        this.filledSuperObjectives = new ArrayList<>();
+        this.assignedSuperObjectives = new ArrayList<>();
+        this.unfilledObjectives = new ArrayList<>();
+        this.filledObjectives = new ArrayList<>();
     }
 
     public ArrayList<Fleet> getFleets() { return fleets; }
-    public void clearFleets() { this.fleets.clear(); }
 
     public void assignFleetsToObjectives(final GameMap gameMap, final ArrayList<Objective> objectives, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
@@ -29,48 +42,68 @@ public class FleetManager
             return;
 
         clearFleets();
-
-        ArrayList<Objective> unfilledObjectives = new ArrayList<>(objectives);
-        ArrayList<Objective> filledObjectives = new ArrayList<>();
+        getObjectives(objectives, behaviourManager);
 
         for(final Ship ship: availableShips)
         {
-            HashMap<Objective, Double> closestObjectives;
-
-            if (unfilledObjectives.isEmpty())
-                closestObjectives = distanceManager.getClosestObjectiveFromShip(filledObjectives, ship, numberOfClosestObjectives);
-            else
-                closestObjectives = distanceManager.getClosestObjectiveFromShip(unfilledObjectives, ship, numberOfClosestObjectives);
-
-            Objective objective = selectObjective(ship, closestObjectives, behaviourManager);
+            HashMap<Objective, Double> objectivesAvailable = getAvailableObjectives(ship, distanceManager);
+            Objective objective = selectObjective(ship, objectivesAvailable, behaviourManager);
 
             objective.decreaseRequiredShips();
-            if (objective.getRequiredShips() == 0)
-            {
-                filledObjectives.add(objective);
-                unfilledObjectives.remove(objective);
-            }
 
-            updateFleets(ship, objective);
+            updateFleets(ship, objective, behaviourManager);
+            updateObjectives(objective);
         }
 
         logFleets();
     }
 
-    private void updateFleets(final Ship ship, final Objective objective)
+    private void updateObjectives(final Objective objective)
+    {
+        if (objective.getRequiredShips() == 0)
+        {
+            if (unfilledSuperObjectives.contains(objective))
+            {
+                filledSuperObjectives.add(objective);
+                unfilledSuperObjectives.remove(objective);
+            }
+            else
+            {
+                filledObjectives.add(objective);
+                unfilledObjectives.remove(objective);
+            }
+        }
+    }
+
+    private void updateFleets(final Ship ship, final Objective objective, final BehaviourManager behaviourManager)
     {
         boolean joinsExistingFleet = false;
         for(final Fleet fleet: this.fleets)
         {
             if (fleet.getObjectives().contains(objective))
             {
-                fleet.getShips().add(ship);
+                fleet.addShip(ship);
                 joinsExistingFleet = true;
+                break;
             }
         }
 
         if (!joinsExistingFleet)
+        {
             this.fleets.add(new Fleet(ship, objective));
+
+            if (unfilledSuperObjectives.contains(objective))
+            {
+                this.assignedSuperObjectives.add(objective);
+                this.fleetsAssignedToSuperObjectives++;
+
+                if (fleetsAssignedToSuperObjectives >= behaviourManager.getRushMaxObjectives())
+                {
+                    unfilledSuperObjectives.clear();
+                    unfilledSuperObjectives.addAll(this.assignedSuperObjectives);
+                }
+            }
+        }
     }
 
     private Objective selectObjective(final Ship ship, final HashMap<Objective, Double> closestObjectivesPriorities, final BehaviourManager behaviourManager)
@@ -94,6 +127,45 @@ public class FleetManager
         return chosenObjective;
     }
 
+    private HashMap<Objective, Double> getAvailableObjectives( final Ship ship, final DistanceManager distanceManager )
+    {
+        HashMap<Objective, Double> closestObjectives;
+        HashMap<Objective, Double> closestSuperObjectives;
+
+        if (unfilledObjectives.isEmpty())
+            closestObjectives = distanceManager.getClosestObjectiveFromShip(filteredAttackObjectives(filledObjectives), ship, numberOfClosestObjectives);
+        else
+            closestObjectives = distanceManager.getClosestObjectiveFromShip(unfilledObjectives, ship, numberOfClosestObjectives);
+
+        closestSuperObjectives = distanceManager.getClosestObjectiveFromShip(unfilledSuperObjectives, ship, Integer.MAX_VALUE);
+
+        closestObjectives.putAll(closestSuperObjectives);
+        return closestObjectives;
+    }
+
+    private ArrayList<Objective> filteredAttackObjectives(final ArrayList<Objective> objectives)
+    {
+        ArrayList<Objective> newObjectives = new ArrayList<>();
+        for(final Objective objective: objectives)
+        {
+            if (objective.getOrderType() == Objective.OrderType.ATTACK)
+                newObjectives.add(objective);
+        }
+        return newObjectives;
+    }
+
+    private void getObjectives(final ArrayList<Objective> objectives, final BehaviourManager behaviourManager)
+    {
+        // Ability to add super objectives, which the ships will consider
+        // even though they are far away.
+
+        for(final Objective objective: objectives)
+            if (objective.getSuperObjective() && (behaviourManager.getRushMaxObjectives() > 0))
+                this.unfilledSuperObjectives.add(objective);
+            else
+                this.unfilledObjectives.add(objective);
+    }
+
     private ArrayList<Ship> allAvailableShips(GameMap gameMap)
     {
         // For all purposes a docking ships will never be used again
@@ -105,6 +177,17 @@ public class FleetManager
                 allShips.add(ship);
 
         return allShips;
+    }
+
+    public void clearFleets()
+    {
+        this.fleets.clear();
+        this.unfilledSuperObjectives.clear();
+        this.filledSuperObjectives.clear();
+        this.assignedSuperObjectives.clear();
+        this.unfilledObjectives.clear();
+        this.filledObjectives.clear();
+        this.fleetsAssignedToSuperObjectives = 0;
     }
 
     private void logFleets()

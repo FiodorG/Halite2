@@ -5,29 +5,33 @@ import hlt.Constants;
 
 import java.util.ArrayList;
 
-import static core.Objective.OrderType.ATTACK;
-import static core.Objective.OrderType.COLONIZE;
-import static core.Objective.OrderType.CRASHINTO;
+import static core.Objective.OrderType.*;
 
 public class NavigationManager
 {
-    public void moveFleetsToObjective(GameMap gameMap, ArrayList<Move> moveList, ArrayList<Fleet> fleets)
+    public void moveFleetsToObjective(final GameMap gameMap, final ArrayList<Move> moveList, final FleetManager fleetManager, final BehaviourManager behaviourManager)
     {
-        for (final Fleet fleet: fleets)
-            moveFleetToObjective(gameMap, moveList, fleet);
+        for (final Fleet fleet: fleetManager.getFleets())
+            moveFleetToObjective(gameMap, moveList, fleet, behaviourManager);
     }
 
-    public void moveFleetToObjective(GameMap gameMap, ArrayList<Move> moveList, Fleet fleet)
+    public void moveFleetToObjective(GameMap gameMap, ArrayList<Move> moveList, Fleet fleet, final BehaviourManager behaviourManager)
     {
+        fleet.computeFleetCentroid();
+
         for(final Ship ship: fleet.getShips())
         {
             Objective objective = fleet.getObjectives().get(0);
             Objective.OrderType orderType = objective.getOrderType();
             Entity target = objective.getTargetEntity();
 
-            final Move newMove;
+            Move newMove;
 
-            if(orderType == COLONIZE)
+            if (orderType == DEFEND)
+            {
+                newMove = Navigation.navigateShipToMove(gameMap, ship, target, Constants.MAX_SPEED);
+            }
+            else if (orderType == COLONIZE)
             {
                 Planet planet = (target instanceof Planet ? (Planet)target : null);
 
@@ -36,18 +40,19 @@ public class NavigationManager
                 else
                     newMove = Navigation.navigateShipToDock(gameMap, ship, target, Constants.MAX_SPEED);
             }
-            else if (orderType == ATTACK)
+            else if ((orderType == ATTACK) || (orderType == RUSH) || (orderType == ANTIRUSH))
             {
-                newMove = Navigation.navigateShipToAttack(gameMap, ship, target, Constants.MAX_SPEED);
+                if (ship.getHealth() <= behaviourManager.getCrashBelowHealth())
+                    newMove = Navigation.navigateShipToCrashInto(gameMap, ship, target, Constants.MAX_SPEED);
+                else
+                    newMove = Navigation.navigateShipToAttack(gameMap, ship, target, Constants.MAX_SPEED);
             }
             else if (orderType == CRASHINTO)
             {
                 newMove = Navigation.navigateShipToCrashInto(gameMap, ship, target, Constants.MAX_SPEED);
             }
             else
-            {
-                newMove = null;
-            }
+                continue;
 
             if (newMove != null)
                 moveList.add(newMove);
@@ -59,16 +64,16 @@ public class NavigationManager
         int numberOfMoves = moveList.size();
         Move move1;
         Move move2;
-        for(int i = 0; i< numberOfMoves; i++)
+        for(int i = 0; i < numberOfMoves; i++)
         {
             move1 = moveList.get(i);
-            for(int j = 0; j < i; j ++)
+            for(int j = 0; j < i; j++)
             {
                 move2 = moveList.get(j);
 
-                Boolean eitherDocking = move1.getType() == Move.MoveType.Dock || move2.getType() == Move.MoveType.Dock;
+                Boolean eitherDocking   = move1.getType() == Move.MoveType.Dock || move2.getType() == Move.MoveType.Dock;
                 Boolean eitherUnDocking = move1.getType() == Move.MoveType.Undock || move2.getType() == Move.MoveType.Undock;
-                Boolean eitherStopped = move1.getType() == Move.MoveType.Noop || move2.getType() == Move.MoveType.Noop;
+                Boolean eitherStopped   = move1.getType() == Move.MoveType.Noop || move2.getType() == Move.MoveType.Noop;
 
                 if(eitherDocking || eitherUnDocking || eitherStopped)
                 {

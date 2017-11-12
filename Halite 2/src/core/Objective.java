@@ -12,27 +12,35 @@ public class Objective
         COLONIZE,
         CRASHINTO,
         MOVE,
+        COMBINE,
+        RUSH,
+        ANTIRUSH,
     }
 
     private final Entity targetEntity;
     private final double priority;
     private int requiredShips;
     private final OrderType orderType;
+    private final double score;
+    private final boolean superObjective;
     private final int Id;
 
     public double getPriority() { return priority; }
     public OrderType getOrderType() { return orderType; }
     public Entity getTargetEntity() { return targetEntity; }
     public int getRequiredShips() { return requiredShips; }
+    public boolean getSuperObjective() { return superObjective; }
     public int getId() { return Id; }
     public void decreaseRequiredShips() { this.requiredShips--; }
 
-    public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final int Id)
+    public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective,final int Id)
     {
         this.targetEntity = targetEntity;
         this.priority = priority;
         this.requiredShips = requiredShips;
         this.orderType = orderType;
+        this.score = 0;
+        this.superObjective = superObjective;
         this.Id = Id;
     }
 
@@ -56,8 +64,8 @@ public class Objective
     {
         return "Objective[" +
                 ", orderType=" + orderType +
-                ", targetEntity=" + targetEntity.getClass() + targetEntity.getId() +
-                ", priority=" + priority +
+                ", target=" + targetEntity.getClass().toString().replace("class hlt.","") + targetEntity.getId() +
+                ", priority=" + String.format("%.2f", priority) +
                 ", requiredShips=" + requiredShips +
                 ", id=" + Id +
                 "]";

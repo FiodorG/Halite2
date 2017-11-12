@@ -3,6 +3,7 @@ package core;
 import Jama.Matrix;
 import hlt.GameMap;
 import hlt.Planet;
+import hlt.Position;
 import hlt.Ship;
 
 import java.lang.reflect.Array;
@@ -158,6 +159,37 @@ public class DistanceManager
         return closestShip;
     }
 
+    public double averageDistanceFromPlayer(final Collection<Ship> myShips, final Collection<Ship> enemyShips)
+    {
+        double averageDistanceFromPlayer = 0;
+
+        for(final Ship myShip: myShips)
+        {
+            int indexMyShip = this.shipIDs.indexOf(myShip.getId());
+
+            for(final Ship enemyShip: enemyShips)
+            {
+                int indexEnemyShip = this.shipIDs.indexOf(enemyShip.getId());
+                averageDistanceFromPlayer += this.distanceMatrixShipShip.get(indexMyShip, indexEnemyShip);
+            }
+        }
+
+        return averageDistanceFromPlayer / myShips.size() / enemyShips.size();
+    }
+
+    public int countCloseEnemyShipsFromPlanet(final GameMap gameMap, final Planet planet, final double distance)
+    {
+        final int planetID = planet.getId();
+        int index = this.planetIDs.indexOf(planet.getId());
+
+        int count = 0;
+        for (int i = 0; i < this.numberOfShips; i++)
+            if (this.distanceMatrixPlanetShip.get(index, i) < distance)
+               count++;
+
+        return count;
+    }
+
     public Ship getClosestShipFromShip(final GameMap gameMap, final Ship targetShip, final ArrayList<Ship> ships)
     {
         // This is O(n^2), need to rework
@@ -216,6 +248,20 @@ public class DistanceManager
         }
 
         return distances / numberOfShips;
+    }
+
+    public Position computeStartingPoint(final Collection<Ship> ships)
+    {
+        double x = 0;
+        double y = 0;
+
+        for(final Ship ship: ships)
+        {
+            x += ship.getXPos();
+            y += ship.getYPos();
+        }
+
+        return new Position(x / ships.size(), y / ships.size());
     }
 
     public Planet findPlanetFromID(final int ID)
