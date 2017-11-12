@@ -21,7 +21,7 @@ public class ObjectiveManager
     {
         clearObjectives();
 
-        //this.objectives.addAll(getRushObjectives(gameMap, distanceManager, behaviourManager));
+        this.objectives.addAll(getRushObjectives(gameMap, distanceManager, behaviourManager));
         this.objectives.addAll(getAntiRushObjectives(gameMap, distanceManager, behaviourManager));
         this.objectives.addAll(getColonizeObjectives(gameMap, distanceManager, behaviourManager));
         this.objectives.addAll(getAttackObjectives(gameMap, distanceManager, behaviourManager));
