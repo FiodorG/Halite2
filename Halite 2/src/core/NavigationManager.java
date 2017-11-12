@@ -11,6 +11,8 @@ public class NavigationManager
 {
     public void moveFleetsToObjective(final GameMap gameMap, final ArrayList<Move> moveList, final FleetManager fleetManager, final BehaviourManager behaviourManager)
     {
+        moveList.clear();
+
         for (final Fleet fleet: fleetManager.getFleets())
             moveFleetToObjective(gameMap, moveList, fleet, behaviourManager);
     }

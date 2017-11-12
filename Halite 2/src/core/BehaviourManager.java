@@ -20,6 +20,7 @@ public class BehaviourManager
     // Rush
     private final double maxRushDistance;
     private final double antiRushPriority;
+    private final double antiRushDistance;
     private final double rushPriority;
     private final int rushTurns;
     private final int rushMaxObjectives;
@@ -52,6 +53,7 @@ public class BehaviourManager
 
         this.maxRushDistance            = (double) gameDefinitions.get("maxRushDistance");
         this.antiRushPriority           = (double) gameDefinitions.get("antiRushPriority");
+        this.antiRushDistance           = (double) gameDefinitions.get("antiRushDistance");
         this.rushPriority               = (double) gameDefinitions.get("rushPriority");
         this.rushTurns                  = (int) gameDefinitions.get("rushTurns");
         this.rushMaxObjectives          = (int) gameDefinitions.get("rushMaxObjectives");
@@ -134,7 +136,7 @@ public class BehaviourManager
 
     public double getShipPriorityForAntiRush(final GameMap gameMap, final DistanceManager distanceManager, final Ship targetShip)
     {
-        if(this.gameState.getStartingPointByPlayers().get(gameMap.getMyPlayerId()).getDistanceTo(targetShip) < 50)
+        if(this.gameState.getStartingPointByPlayers().get(gameMap.getMyPlayerId()).getDistanceTo(targetShip) < antiRushDistance)
             return antiRushPriority;
         else
             return 0;

@@ -63,7 +63,7 @@ public class Objective
     public String toString()
     {
         return "Objective[" +
-                ", order=" + orderType +
+                "order=" + orderType +
                 ", target=" + targetEntity.getClass().toString().replace("class hlt.","") + targetEntity.getId() +
                 ", pri=" + String.format("%.2f", priority) +
                 ", requiredShips=" + requiredShips +

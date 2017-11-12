@@ -96,8 +96,8 @@ public class ObjectiveManager
             if (ship.getOwner() == myId)
                 continue;
 
-                // Then attack docking/undocking ships in priority
-            else if ((ship.getDockingStatus() == Ship.DockingStatus.Undocked))
+            // Then antirush anything that goes too close
+            else
                 objective = new Objective(
                     ship,
                     behaviourManager.getShipPriorityForAntiRush(gameMap, distanceManager, ship),
@@ -106,9 +106,6 @@ public class ObjectiveManager
                     false,
                     this.objectiveId++
                 );
-
-            else
-                continue;
 
             objectives.add(objective);
         }
@@ -126,11 +123,8 @@ public class ObjectiveManager
         {
             Objective objective;
 
-            if (planet.getOwner() != myId)
-                continue;
-
             // First make sure we fill slots in owned planets
-            else if (planet.getOwner() == myId && !planet.isFull())
+            if (planet.getOwner() == myId && !planet.isFull())
                 objective = new Objective(
                     planet,
                     behaviourManager.getPlanetPriorityForColonize(gameMap, distanceManager, planet),

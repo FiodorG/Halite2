@@ -63,5 +63,11 @@ public class GameState
         this.turn++;
     }
 
-
+    @Override
+    public String toString()
+    {
+        return "GameState[" +
+                "turn=" + turn +
+                "]";
+    }
 }
