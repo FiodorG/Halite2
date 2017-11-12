@@ -1,7 +1,7 @@
 javac MyBot.java
-javac MyBotStarterPackage.java
-javac MyBotv1.java
+javac MyBotRush.java
+javac MyBotNoRush.java
 
 
-halite "java MyBotv1" "java MyBot"
+halite -d "240 120" "java MyBot" "java MyBotRush"
 pause

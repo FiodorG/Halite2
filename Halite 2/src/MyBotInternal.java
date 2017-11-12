@@ -5,11 +5,11 @@ import hlt.Move;
 import hlt.Networking;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Map;
 
 public class MyBotInternal
 {
-    public static void main(final HashMap<String,Object> gameDefinitions)
+    public static void main(final Map<String,Object> gameDefinitions)
     {
         Timer timer                         = new Timer();
         GameState gameState                 = new GameState();
@@ -21,14 +21,13 @@ public class MyBotInternal
 
         final Networking networking         = new Networking();
         final GameMap gameMap               = networking.initialize((String) gameDefinitions.get("botName"));
-        final ArrayList<Move> moveList      = new ArrayList<>();
+        ArrayList<Move> moveList            = new ArrayList<>();
 
         while(true)
         {
 //            timer.setCurrentTurnStartTime();
-            logNewTurn(gameState.getTurn());
-            moveList.clear();
             gameMap.updateMap(Networking.readLineIntoMetadata());
+            logNewTurn(gameState.getTurn());
             distanceManager.computeDistanceMatrices(gameMap);
             gameState.updateGameState(gameMap, distanceManager);
 
@@ -38,9 +37,16 @@ public class MyBotInternal
 
 //            if (timer.timeToEndTurn()) break;
 
-            Networking.sendMoves(navigationManager.resolveMoves(moveList));
+            moveList = navigationManager.resolveMoves(moveList);
+            logMoves(moveList);
+            Networking.sendMoves(moveList);
         }
     }
 
     private static void logNewTurn(final int turn)  { DebugLog.addLog("\n\nTurn: " + Integer.toString(turn) + "\n"); }
+    private static void logMoves(final ArrayList<Move> moveList)
+    {
+        for(final Move move: moveList)
+            DebugLog.addLog(move.toString());
+    }
 }
