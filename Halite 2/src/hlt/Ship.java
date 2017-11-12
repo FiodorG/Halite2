@@ -59,7 +59,6 @@ public class Ship extends Entity
                 ", dockingStatus=" + dockingStatus +
                 ", dockedPlanet=" + dockedPlanet +
                 ", dockingProgress=" + dockingProgress +
-                ", weaponCooldown=" + weaponCooldown +
                 "]";
     }
 }
