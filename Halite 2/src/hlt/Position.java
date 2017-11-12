@@ -73,5 +73,5 @@ public class Position
     }
 
     @Override
-    public String toString() { return "Position(" + xPos + ", " + yPos + ")"; }
+    public String toString() { return "(" + String.format("%.2f", xPos) + ", " + String.format("%.2f", yPos) + ")"; }
 }

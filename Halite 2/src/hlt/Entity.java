@@ -7,7 +7,8 @@ public class Entity extends Position
     private final int health;
     private final double radius;
 
-    public Entity(final int owner, final int id, final double xPos, final double yPos, final int health, final double radius) {
+    public Entity(final int owner, final int id, final double xPos, final double yPos, final int health, final double radius)
+    {
         super(xPos, yPos);
         this.owner = owner;
         this.id = id;
@@ -52,7 +53,8 @@ public class Entity extends Position
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         return "Entity[" +
                 super.toString() +
                 ", owner=" + owner +
