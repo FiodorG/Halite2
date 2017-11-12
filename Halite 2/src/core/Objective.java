@@ -33,7 +33,7 @@ public class Objective
     public int getId() { return Id; }
     public void decreaseRequiredShips() { this.requiredShips--; }
 
-    public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective,final int Id)
+    public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective, final int Id)
     {
         this.targetEntity = targetEntity;
         this.priority = priority;
@@ -63,10 +63,11 @@ public class Objective
     public String toString()
     {
         return "Objective[" +
-                ", orderType=" + orderType +
+                ", order=" + orderType +
                 ", target=" + targetEntity.getClass().toString().replace("class hlt.","") + targetEntity.getId() +
-                ", priority=" + String.format("%.2f", priority) +
+                ", pri=" + String.format("%.2f", priority) +
                 ", requiredShips=" + requiredShips +
+                ", super=" + superObjective +
                 ", id=" + Id +
                 "]";
     }

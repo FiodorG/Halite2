@@ -8,7 +8,6 @@ import java.util.Map;
 
 public class BehaviourManager
 {
-    private String behaviourType;
     private GameState gameState;
 
     private final double maxPriority;
@@ -37,7 +36,6 @@ public class BehaviourManager
     private final double crashBelowHealth;
 
     // Attack
-    private final double dockingShipPriority;
     private final double attackShipPriority;
 
     public int getRushMaxObjectives() { return rushMaxObjectives; }
@@ -46,8 +44,6 @@ public class BehaviourManager
     public BehaviourManager(final Map<String,Object> gameDefinitions, final GameState gameState)
     {
         this.gameState                  = gameState;
-        this.behaviourType              = (String) gameDefinitions.get("behaviourType");
-
         this.maxPriority                = (double) gameDefinitions.get("maxPriority");
         this.distanceDiscountExponent   = (double) gameDefinitions.get("distanceDiscountExponent");
 
@@ -69,7 +65,6 @@ public class BehaviourManager
         this.enemyShipsToCrash          = (int) gameDefinitions.get("enemyShipsToCrash");
         this.crashBelowHealth           = (double) gameDefinitions.get("crashBelowHealth");
 
-        this.dockingShipPriority        = (double) gameDefinitions.get("dockingShipPriority");
         this.attackShipPriority         = (double) gameDefinitions.get("attackShipPriority");
     }
 

@@ -48,7 +48,6 @@ public class FleetManager
         {
             HashMap<Objective, Double> objectivesAvailable = getAvailableObjectives(ship, distanceManager);
             Objective objective = selectObjective(ship, objectivesAvailable, behaviourManager);
-
             objective.decreaseRequiredShips();
 
             updateFleets(ship, objective, behaviourManager);
@@ -100,7 +99,10 @@ public class FleetManager
                 if (fleetsAssignedToSuperObjectives >= behaviourManager.getRushMaxObjectives())
                 {
                     unfilledSuperObjectives.clear();
-                    unfilledSuperObjectives.addAll(this.assignedSuperObjectives);
+
+                    for(final Objective superObjective: this.assignedSuperObjectives)
+                        if(superObjective.getRequiredShips() > 0)
+                            unfilledSuperObjectives.add(superObjective);
                 }
             }
         }
@@ -145,6 +147,9 @@ public class FleetManager
 
     private ArrayList<Objective> filteredAttackObjectives(final ArrayList<Objective> objectives)
     {
+        // Select only attack objectives when
+        // all objectives have been filled (typically end of game)
+
         ArrayList<Objective> newObjectives = new ArrayList<>();
         for(final Objective objective: objectives)
         {
@@ -160,7 +165,7 @@ public class FleetManager
         // even though they are far away.
 
         for(final Objective objective: objectives)
-            if (objective.getSuperObjective() && (behaviourManager.getRushMaxObjectives() > 0))
+            if (objective.getSuperObjective())
                 this.unfilledSuperObjectives.add(objective);
             else
                 this.unfilledObjectives.add(objective);

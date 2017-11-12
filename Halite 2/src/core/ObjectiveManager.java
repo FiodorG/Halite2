@@ -126,8 +126,11 @@ public class ObjectiveManager
         {
             Objective objective;
 
+            if (planet.getOwner() != myId)
+                continue;
+
             // First make sure we fill slots in owned planets
-            if (planet.getOwner() == myId && !planet.isFull())
+            else if (planet.getOwner() == myId && !planet.isFull())
                 objective = new Objective(
                     planet,
                     behaviourManager.getPlanetPriorityForColonize(gameMap, distanceManager, planet),
@@ -144,17 +147,6 @@ public class ObjectiveManager
                     behaviourManager.getPlanetPriorityForColonize(gameMap, distanceManager, planet),
                     planet.getDockingSpots(),
                     Objective.OrderType.COLONIZE,
-                    false,
-                    this.objectiveId++
-                );
-
-            // Then crash into full enemy planets
-            else if (planet.getOwner() != myId)
-                objective = new Objective(
-                    planet,
-                    behaviourManager.getPlanetPriorityForCrash(gameMap, distanceManager, planet),
-                    (int) planet.getHealth(),
-                    Objective.OrderType.CRASHINTO,
                     false,
                     this.objectiveId++
                 );
