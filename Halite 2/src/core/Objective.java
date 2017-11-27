@@ -6,10 +6,12 @@ import java.util.Objects;
 
 public class Objective
 {
-    public enum OrderType{
+    public enum OrderType
+    {
         ATTACK,
         DEFEND,
         COLONIZE,
+        REINFORCECOLONY,
         CRASHINTO,
         MOVE,
         COMBINE,
@@ -21,7 +23,6 @@ public class Objective
     private final double priority;
     private int requiredShips;
     private final OrderType orderType;
-    private final double score;
     private final boolean superObjective;
     private final int Id;
 
@@ -31,7 +32,7 @@ public class Objective
     public int getRequiredShips() { return requiredShips; }
     public boolean getSuperObjective() { return superObjective; }
     public int getId() { return Id; }
-    public void decreaseRequiredShips() { this.requiredShips--; }
+    public void decreaseRequiredShips(int value) { this.requiredShips -= value; }
 
     public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective, final int Id)
     {
@@ -39,7 +40,6 @@ public class Objective
         this.priority = priority;
         this.requiredShips = requiredShips;
         this.orderType = orderType;
-        this.score = 0;
         this.superObjective = superObjective;
         this.Id = Id;
     }
@@ -62,13 +62,12 @@ public class Objective
     @Override
     public String toString()
     {
-        return "Objective[" +
+        return "Objective" + Id + "[" +
                 "order=" + orderType +
                 ", target=" + targetEntity.getClass().toString().replace("class hlt.","") + targetEntity.getId() +
                 ", pri=" + String.format("%.2f", priority) +
                 ", requiredShips=" + requiredShips +
                 ", super=" + superObjective +
-                ", id=" + Id +
                 "]";
     }
 

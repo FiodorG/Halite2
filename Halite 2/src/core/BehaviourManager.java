@@ -8,14 +8,13 @@ import java.util.Map;
 
 public class BehaviourManager
 {
-    private GameState gameState;
-
     private final double maxPriority;
     private final double distanceDiscountExponent;
 
     // Colonize
     private final int colonizationTurns;
     private final double colonizationBump;
+    private final int colonizationMinShips;
 
     // Rush
     private final double maxRushDistance;
@@ -38,39 +37,41 @@ public class BehaviourManager
 
     // Attack
     private final double attackShipPriority;
+    private final double attackDockedShipPriority;
 
     public int getRushMaxObjectives() { return rushMaxObjectives; }
     public double getCrashBelowHealth() { return crashBelowHealth; }
 
-    public BehaviourManager(final Map<String,Object> gameDefinitions, final GameState gameState)
+    public BehaviourManager(final Map<String,Object> gameDefinitions)
     {
-        this.gameState                  = gameState;
-        this.maxPriority                = (double) gameDefinitions.get("maxPriority");
-        this.distanceDiscountExponent   = (double) gameDefinitions.get("distanceDiscountExponent");
+        this.maxPriority = (double) gameDefinitions.get("maxPriority");
+        this.distanceDiscountExponent = (double) gameDefinitions.get("distanceDiscountExponent");
 
-        this.colonizationTurns          = (int) gameDefinitions.get("colonizationTurns");
-        this.colonizationBump           = (double) gameDefinitions.get("colonizationBump");
+        this.colonizationTurns = (int) gameDefinitions.get("colonizationTurns");
+        this.colonizationBump = (double) gameDefinitions.get("colonizationBump");
+        this.colonizationMinShips = (int) gameDefinitions.get("colonizationMinShips");
 
-        this.maxRushDistance            = (double) gameDefinitions.get("maxRushDistance");
-        this.antiRushPriority           = (double) gameDefinitions.get("antiRushPriority");
-        this.antiRushDistance           = (double) gameDefinitions.get("antiRushDistance");
-        this.rushPriority               = (double) gameDefinitions.get("rushPriority");
-        this.rushTurns                  = (int) gameDefinitions.get("rushTurns");
-        this.rushMaxObjectives          = (int) gameDefinitions.get("rushMaxObjectives");
-        this.rushMaxShipsPerObjective   = (int) gameDefinitions.get("rushMaxShipsPerObjective");
-        this.rushActivated              = false;
+        this.maxRushDistance = (double) gameDefinitions.get("maxRushDistance");
+        this.antiRushPriority = (double) gameDefinitions.get("antiRushPriority");
+        this.antiRushDistance = (double) gameDefinitions.get("antiRushDistance");
+        this.rushPriority = (double) gameDefinitions.get("rushPriority");
+        this.rushTurns = (int) gameDefinitions.get("rushTurns");
+        this.rushMaxObjectives = (int) gameDefinitions.get("rushMaxObjectives");
+        this.rushMaxShipsPerObjective = (int) gameDefinitions.get("rushMaxShipsPerObjective");
+        this.rushActivated = false;
 
-        this.defendPriority             = (double) gameDefinitions.get("defendPriority");
-        this.enemyShipsToDefend         = (int) gameDefinitions.get("enemyShipsToDefend");
+        this.defendPriority = (double) gameDefinitions.get("defendPriority");
+        this.enemyShipsToDefend = (int) gameDefinitions.get("enemyShipsToDefend");
 
-        this.crashPriority              = (double) gameDefinitions.get("crashPriority");
-        this.enemyShipsToCrash          = (int) gameDefinitions.get("enemyShipsToCrash");
-        this.crashBelowHealth           = (double) gameDefinitions.get("crashBelowHealth");
+        this.crashPriority = (double) gameDefinitions.get("crashPriority");
+        this.enemyShipsToCrash = (int) gameDefinitions.get("enemyShipsToCrash");
+        this.crashBelowHealth = (double) gameDefinitions.get("crashBelowHealth");
 
-        this.attackShipPriority         = (double) gameDefinitions.get("attackShipPriority");
+        this.attackShipPriority = (double) gameDefinitions.get("attackShipPriority");
+        this.attackDockedShipPriority = (double) gameDefinitions.get("attackDockedShipPriority");
     }
 
-    public double getPlanetPriorityForColonize(final GameMap gameMap, final DistanceManager distanceManager, final Planet targetPlanet)
+    public double getPlanetPriorityForColonize(final GameState gameState, final Planet targetPlanet)
     {
         // This is just linear in the number of docking spots.
         // We rescale from 0-100 by dividing by highest priority (6-planet at 0 distance = 6), and times 100.
@@ -83,23 +84,29 @@ public class BehaviourManager
             return priority;
     }
 
-    public double getPlanetPriorityForCrash(final GameMap gameMap, final DistanceManager distanceManager, final Planet targetPlanet)
+    public double getPlanetPriorityForReinforceColony(final GameState gameState, final Planet targetPlanet)
     {
-        if(distanceManager.countCloseEnemyShipsFromPlanet(gameMap, targetPlanet, targetPlanet.getRadius() + Math.max(targetPlanet.getRadius(), 4)) > enemyShipsToCrash)
-            return crashPriority;
+        // This is just linear in the number of docking spots.
+        // We rescale from 0-100 by dividing by highest priority (6-planet at 0 distance = 6), and times 100.
+
+        double priority = maxPriority;
+
+        if (gameState.getTurn() < colonizationTurns)
+            return colonizationBump + priority;
         else
-            return 0;
+            return priority;
     }
 
-    public double getPlanetPriorityForDefend(final GameMap gameMap, final DistanceManager distanceManager, final Planet targetPlanet)
+    public double getShipPriorityForDefend(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
-        if(distanceManager.countCloseEnemyShipsFromPlanet(gameMap, targetPlanet, 25) > enemyShipsToDefend)
+        // If enemy ship less than 2 turns away
+        if (distanceManager.getClosestEnemyShipDistance(targetShip) < 14.0)
             return defendPriority;
         else
-            return 0;
+            return 0.0;
     }
 
-    public double getDockedShipPriorityForAttack(final GameMap gameMap, final DistanceManager distanceManager, final Ship targetShip)
+    public double getDockedShipPriorityForAttack(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
         // Ideally we should attack either poorly defended planets, or hubs with many ships
         // Otherwise we take a linear map of number of docked ships from 0 to 100.
@@ -108,35 +115,35 @@ public class BehaviourManager
         int numberOfDockedShips = planet.getDockedShips().size();
 
         if (numberOfDockedShips == 1 || numberOfDockedShips >= 4)
-            return maxPriority;
+            return attackDockedShipPriority;
         else
             return numberOfDockedShips / 6.0 * maxPriority;
     }
 
-    public double getShipPriorityForAttack(final GameMap gameMap, final DistanceManager distanceManager, final Ship targetShip)
+    public double getShipPriorityForAttack(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
         return attackShipPriority;
     }
 
-    public double getDockedShipPriorityForRush(final GameMap gameMap, final DistanceManager distanceManager, final Ship targetShip)
+    public double getDockedShipPriorityForRush(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
-        if(isValidTargetForRush(gameMap, distanceManager, targetShip))
+        if(isValidTargetForRush(gameState, distanceManager, targetShip))
             return rushPriority;
         else
             return 0;
     }
 
-    public double getUndockedShipPriorityForRush(final GameMap gameMap, final DistanceManager distanceManager, final Ship targetShip)
+    public double getUndockedShipPriorityForRush(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
-        if(isValidTargetForRush(gameMap, distanceManager, targetShip))
+        if(isValidTargetForRush(gameState, distanceManager, targetShip))
             return rushPriority * 0.75;
         else
             return 0;
     }
 
-    public double getShipPriorityForAntiRush(final GameMap gameMap, final DistanceManager distanceManager, final Ship targetShip)
+    public double getShipPriorityForAntiRush(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
-        if(this.gameState.getStartingPointByPlayers().get(gameMap.getMyPlayerId()).getDistanceTo(targetShip) < antiRushDistance)
+        if(gameState.getStartingPointByPlayers().get(gameState.getMyId()).getDistanceTo(targetShip) < antiRushDistance)
             return antiRushPriority;
         else
             return 0;
@@ -149,18 +156,18 @@ public class BehaviourManager
         return priority / Math.pow(distance, distanceDiscountExponent);
     }
 
-    public boolean isValidTurnForRush()
+    public boolean isValidTurnForRush(final GameState gameState)
     {
         return gameState.getTurn() <= rushTurns;
     }
 
-    public boolean isValidTargetForRush(final GameMap gameMap, final DistanceManager distanceManager, final Ship targetShip)
+    public boolean isValidTargetForRush(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
         if (gameState.getTurn() <= 1)
         {
             // Enemy needs to be close
-            boolean enemyClose = this.gameState.getStartingPointByPlayers().get(gameState.getMyId()).getDistanceTo(targetShip) < maxRushDistance;
-            boolean oneVsOne = this.gameState.getNumberOfPlayers() == 2;
+            boolean enemyClose = gameState.getStartingPointByPlayers().get(gameState.getMyId()).getDistanceTo(targetShip) < maxRushDistance;
+            boolean oneVsOne = gameState.getNumberOfPlayers() == 2;
             rushActivated = enemyClose && oneVsOne;
             return rushActivated;
         }
@@ -170,9 +177,9 @@ public class BehaviourManager
         }
     }
 
-    public int getRushShipsPerObjective(final GameMap gameMap, final DistanceManager distanceManager, final Ship targetShip)
+    public int getRushShipsPerObjective(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
-        if (!isValidTargetForRush(gameMap, distanceManager, targetShip))
+        if (!isValidTargetForRush(gameState, distanceManager, targetShip))
             return 0;
         else if (gameState.getTurn() <= 5)
             return rushMaxShipsPerObjective;

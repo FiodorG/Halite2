@@ -1,5 +1,6 @@
 package core;
 
+import core.CombatManager.CombatManager;
 import hlt.*;
 import hlt.Constants;
 
@@ -9,18 +10,17 @@ import static core.Objective.OrderType.*;
 
 public class NavigationManager
 {
-    public void moveFleetsToObjective(final GameMap gameMap, final ArrayList<Move> moveList, final FleetManager fleetManager, final BehaviourManager behaviourManager)
+    public void moveFleetsToObjective(final GameState gameState, final ArrayList<Move> moveList)
     {
-        moveList.clear();
+        for (final Fleet fleet: gameState.getFleetManager().getFleets())
+            moveFleetToObjective(gameState, moveList, fleet, gameState.getBehaviourManager());
 
-        for (final Fleet fleet: fleetManager.getFleets())
-            moveFleetToObjective(gameMap, moveList, fleet, behaviourManager);
+        resolveMoves(moveList);
+        logMoves(moveList);
     }
 
-    public void moveFleetToObjective(GameMap gameMap, ArrayList<Move> moveList, Fleet fleet, final BehaviourManager behaviourManager)
+    public void moveFleetToObjective(final GameState gameState, ArrayList<Move> moveList, final Fleet fleet, final BehaviourManager behaviourManager)
     {
-        fleet.computeFleetCentroid();
-
         for(final Ship ship: fleet.getShips())
         {
             Objective objective = fleet.getObjectives().get(0);
@@ -29,39 +29,77 @@ public class NavigationManager
 
             Move newMove;
 
-            if (orderType == DEFEND)
+            switch (orderType)
             {
-                newMove = Navigation.navigateShipToMove(gameMap, ship, target, Constants.MAX_SPEED);
+                case DEFEND:
+                    newMove = moveFleetToObjectiveDefend(gameState, ship, target);
+                    break;
+                case COLONIZE: case REINFORCECOLONY:
+                    newMove = moveFleetToObjectiveColonize(gameState, ship, target);
+                    break;
+                case RUSH: case ANTIRUSH: case ATTACK:
+                    newMove = moveFleetToObjectiveAttack(gameState, ship, fleet, target);
+                    break;
+                case CRASHINTO:
+                    newMove = moveFleetToObjectiveCrashInto(gameState, ship, target);
+                    break;
+                default:
+                    continue;
             }
-            else if (orderType == COLONIZE)
-            {
-                Planet planet = (target instanceof Planet ? (Planet)target : null);
-
-                if (ship.canDock(planet))
-                    newMove = new DockMove(ship, planet);
-                else
-                    newMove = Navigation.navigateShipToDock(gameMap, ship, target, Constants.MAX_SPEED);
-            }
-            else if ((orderType == ATTACK) || (orderType == RUSH) || (orderType == ANTIRUSH))
-            {
-                if (ship.getHealth() <= behaviourManager.getCrashBelowHealth())
-                    newMove = Navigation.navigateShipToCrashInto(gameMap, ship, target, Constants.MAX_SPEED);
-                else
-                    newMove = Navigation.navigateShipToAttack(gameMap, ship, target, Constants.MAX_SPEED);
-            }
-            else if (orderType == CRASHINTO)
-            {
-                newMove = Navigation.navigateShipToCrashInto(gameMap, ship, target, Constants.MAX_SPEED);
-            }
-            else
-                continue;
 
             if (newMove != null)
                 moveList.add(newMove);
         }
     }
 
-    public ArrayList<Move> resolveMoves(ArrayList<Move> moveList)
+    private Move moveFleetToObjectiveDefend(final GameState gameState, final Ship ship, final Entity target)
+    {
+        return(Navigation.navigateShipToMove(gameState.getGameMap(), ship, target, Constants.MAX_SPEED));
+    }
+
+    private Move moveFleetToObjectiveColonize(final GameState gameState, final Ship ship, final Entity target)
+    {
+        Planet planet = (target instanceof Planet ? (Planet)target : null);
+
+        if (ship.canDock(planet))
+            return new DockMove(ship, planet);
+        else
+            return Navigation.navigateShipToDock(gameState.getGameMap(), ship, target, Constants.MAX_SPEED);
+    }
+
+    private Move moveFleetToObjectiveAttack(final GameState gameState, final Ship ship, final Fleet fleet, final Entity target)
+    {
+        if (ship.getHealth() <= gameState.getBehaviourManager().getCrashBelowHealth())
+            return Navigation.navigateShipToCrashInto(gameState.getGameMap(), ship, target, Constants.MAX_SPEED);
+        else
+        {
+            Move newMove = Navigation.navigateShipToAttack(gameState.getGameMap(), ship, target, Constants.MAX_SPEED);
+            double newMoveScore = CombatManager.IsGoodMove(ship, (Ship) target, (ThrustMove) newMove, gameState);
+
+            Move retreatMove = Navigation.navigateShipToMove(gameState.getGameMap(), ship, retreatTarget(gameState, ship, fleet), Constants.MAX_SPEED);
+            double retreatMoveScore = CombatManager.IsGoodMove(ship, (Ship) target, (ThrustMove) retreatMove, gameState);
+
+            if (newMoveScore < retreatMoveScore)
+                return retreatMove;
+            else
+                return newMove;
+        }
+    }
+
+    private Move moveFleetToObjectiveCrashInto(final GameState gameState, final Ship ship, final Entity target)
+    {
+        return(Navigation.navigateShipToCrashInto(gameState.getGameMap(), ship, target, Constants.MAX_SPEED));
+    }
+
+    private Entity retreatTarget(final GameState gameState, final Ship targetShip, final Fleet fleet)
+    {
+        if (fleet.getShips().size() > 1)
+            return fleet.FleetCentroid();
+        else
+            return gameState.getDistanceManager().getClosestShip(targetShip);
+    }
+
+    private void resolveMoves(final ArrayList<Move> moveList)
     {
         int numberOfMoves = moveList.size();
         Move move1;
@@ -86,12 +124,12 @@ public class NavigationManager
                     ThrustMove t1 = (ThrustMove) move1;
                     ThrustMove t2 = (ThrustMove) move2;
 
-                    if(willCollide(t1, t2))
+                    if(willCollide2(t1, t2))
                         moveList.set(j, new ThrustMove(move2.getShip(),0,0));
+//                    avoidCollisions(t1, t2);
                 }
             }
         }
-        return moveList;
     }
 
     private static boolean willCollide(ThrustMove m1, ThrustMove m2)
@@ -110,7 +148,7 @@ public class NavigationManager
         Double cross = r1.cross(r2);
         VectorBasic diff = v1.subtract(v2);
 
-        if(newDiff.length() < Constants.SHIP_RADIUS * 2)
+        if(newDiff.length() < Constants.SHIP_RADIUS * 2 + 0.1)
         {
             return true;
         }
@@ -130,5 +168,50 @@ public class NavigationManager
             else
                 return false;
         }
+    }
+
+    private static boolean willCollide2(ThrustMove m1, ThrustMove m2)
+    {
+        VectorBasic v1 = new VectorBasic(m1.getShip().getXPos(), m1.getShip().getYPos());
+        VectorBasic v2 = new VectorBasic(m2.getShip().getXPos(), m2.getShip().getYPos());
+
+        for (double i = 0.0; i <= 1; i += 0.1)
+        {
+            VectorBasic r1 = new VectorBasic(m1.dX() * i, m1.dY() * i);
+            VectorBasic r2 = new VectorBasic(m2.dX() * i, m2.dY() * i);
+
+            VectorBasic p1 = v1.add(r1);
+            VectorBasic p2 = v2.add(r2);
+
+            if (p1.subtract(p2).length() < Constants.SHIP_RADIUS * 2 + 0.1)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void avoidCollisions(ThrustMove m1, ThrustMove m2)
+    {
+        VectorBasic v1 = new VectorBasic(m1.getShip().getXPos(), m1.getShip().getYPos());
+        VectorBasic v2 = new VectorBasic(m2.getShip().getXPos(), m2.getShip().getYPos());
+
+        for (int i = 0; i <= 7; i++)
+        {
+            double proportion = (i / 7.0);
+            VectorBasic r1 = new VectorBasic(m1.dX((int)(m1.getThrust() * proportion)), m1.dY((int)(m1.getThrust() * proportion)));
+            VectorBasic r2 = new VectorBasic(m2.dX((int)(m2.getThrust() * proportion)), m2.dY((int)(m2.getThrust() * proportion)));
+
+            VectorBasic p1 = v1.add(r1);
+            VectorBasic p2 = v2.add(r2);
+
+            if (p1.subtract(p2).length() < Constants.SHIP_RADIUS * 2 + 0.1)
+                m2.setThrust(m2.getThrust() * (int)((i - 1) / 7.0));
+        }
+    }
+
+    private void logMoves(final ArrayList<Move> moveList)
+    {
+        for(final Move move: moveList)
+            DebugLog.addLog(move.toString());
     }
 }

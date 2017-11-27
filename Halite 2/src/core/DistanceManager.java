@@ -1,222 +1,121 @@
 package core;
 
-import Jama.Matrix;
-import hlt.GameMap;
-import hlt.Planet;
-import hlt.Position;
-import hlt.Ship;
+import hlt.*;
 
 import java.lang.reflect.Array;
 import java.util.*;
 
 public class DistanceManager
 {
-    private Matrix distanceMatrixPlanetPlanet;
-    private Matrix distanceMatrixPlanetShip;
-    private Matrix distanceMatrixShipShip;
-    private Matrix distanceMatrixObjectiveShip;
+    public static class EntityAndDistance
+    {
+        private Entity entity;
+        private double distance;
+
+        public EntityAndDistance(final Entity entity, final double distance)
+        {
+            this.entity = entity;
+            this.distance = distance;
+        }
+
+        public double getDistance() { return distance; }
+        public Entity getEntity() { return entity; }
+    }
+
+    private HashMap<Integer, TreeSet<EntityAndDistance>> distanceMatrixShipPlanet;
+    private HashMap<Integer, TreeSet<EntityAndDistance>> distanceMatrixShipShip;
 
     private List<Planet> planets;
-    private List<Ship> ships;
-    private List<Objective> objectives;
+    private List<Ship> myShips;
+    private List<Ship> enemyShips;
 
-    private Vector<Integer> planetIDs;
-    private Vector<Integer> shipIDs;
-    private Vector<Integer> objectiveIDs;
-
-    private int numberOfPlanets;
-    private int numberOfShips;
-
-    public void computeDistanceMatrices(final GameMap gameMap)
+    public void computeDistanceMatrices(final GameState gameState)
     {
-        fillIndices(gameMap);
+        this.planets = new ArrayList<>(gameState.getGameMap().getAllPlanets().values());
+        this.myShips = new ArrayList<>(gameState.getMyShips());
+        this.enemyShips = new ArrayList<>(gameState.getEnemyShips());
 
-        computeDistanceMatrixPlanetPlanet();
-        computeDistanceMatrixPlanetShip();
+        computeDistanceMatrixShipPlanet();
         computeDistanceMatrixShipShip();
     }
 
-    private void fillIndices(final GameMap gameMap)
+    private void computeDistanceMatrixShipPlanet()
     {
-        this.planets = new ArrayList<>(gameMap.getAllPlanets().values());
-        this.ships = gameMap.getAllShips();
+        this.distanceMatrixShipPlanet = new HashMap<>();
 
-        this.shipIDs = new Vector<>();
-        for(final Ship ship: this.ships)
-            this.shipIDs.add(ship.getId());
-
-        this.planetIDs = new Vector<>();
-        for(final Planet planet: this.planets)
-            this.planetIDs.add(planet.getId());
-
-        this.numberOfPlanets = this.planets.size();
-        this.numberOfShips = this.ships.size();
-    }
-
-    private void computeDistanceMatrixPlanetPlanet()
-    {
-        this.distanceMatrixPlanetPlanet = new Matrix(this.numberOfPlanets, this.numberOfPlanets);
-
-        int i = 0;
-        for(final Planet planet_i : this.planets)
+        for(final Ship ship_i : this.myShips)
         {
-            int j = 0;
-            for(final Planet planet_j : this.planets)
-            {
-                if (j == i)
-                    break;
+            this.distanceMatrixShipPlanet.put(ship_i.getId(), new TreeSet<>(Comparator.comparingDouble(EntityAndDistance::getDistance)));
 
-                double distance = planet_i.getDistanceTo(planet_j);
-                this.distanceMatrixPlanetPlanet.set(i, j, distance);
-                this.distanceMatrixPlanetPlanet.set(j, i, distance);
-                j++;
-            }
-            i++;
-        }
-    }
-
-    private void computeDistanceMatrixPlanetShip()
-    {
-        this.distanceMatrixPlanetShip = new Matrix(this.numberOfPlanets, this.numberOfShips);
-
-        int i = 0;
-        for(final Planet planet_i : this.planets)
-        {
-            int j = 0;
-            for(final Ship ship_j : this.ships)
-            {
-                this.distanceMatrixPlanetShip.set(i, j, planet_i.getDistanceTo(ship_j));
-                j++;
-            }
-            i++;
+            for (final Planet planet_j : this.planets)
+                this.distanceMatrixShipPlanet.get(ship_i.getId()).add(new EntityAndDistance(planet_j, ship_i.getDistanceTo(planet_j)));
         }
     }
 
     private void computeDistanceMatrixShipShip()
     {
-        this.distanceMatrixShipShip = new Matrix(this.numberOfShips, this.numberOfShips);
+        this.distanceMatrixShipShip = new HashMap<>();
 
-        int i = 0;
-        for(final Ship ship_i : this.ships)
+        for(final Ship ship_i : this.myShips)
         {
-            int j = 0;
-            for(final Ship ship_j : this.ships)
-            {
-                if (j == i)
-                    break;
+            this.distanceMatrixShipShip.put(ship_i.getId(), new TreeSet<>(Comparator.comparingDouble(EntityAndDistance::getDistance)));
 
-                double distance = ship_i.getDistanceTo(ship_j);
-                this.distanceMatrixShipShip.set(i, j, distance);
-                this.distanceMatrixShipShip.set(j, i, distance);
-                j++;
-            }
-            i++;
+            for(final Ship ship_j : this.enemyShips)
+                this.distanceMatrixShipShip.get(ship_i.getId()).add(new EntityAndDistance(ship_j, ship_i.getDistanceTo(ship_j)));
         }
     }
 
-    public void computeObjectivesDistanceMatrices(final GameMap gameMap, final ArrayList<Objective> objectives)
+    public double getClosestEnemyShipDistance(final Ship ship)
     {
-        this.objectives = objectives;
-        this.distanceMatrixObjectiveShip = new Matrix(objectives.size(), this.numberOfShips);
-
-        this.objectiveIDs = new Vector<>();
-        for(final Objective objective: this.objectives)
-            this.objectiveIDs.add(objective.getId());
-
-        int i = 0;
-        for(final Objective objective: objectives)
-        {
-            int j = 0;
-            for(final Ship ship : this.ships)
-            {
-                this.distanceMatrixObjectiveShip.set(i, j, objective.getTargetEntity().getDistanceTo(ship));
-                j++;
-            }
-            i++;
-        }
+        return this.distanceMatrixShipShip.get(ship.getId()).first().getDistance();
     }
 
-    public Ship getClosestShipFromPlanet(final GameMap gameMap, final Planet planet, final ArrayList<Ship> ships)
+    public ArrayList<Ship> getEnemiesCloserThan(final Ship ship, final double minDistance)
     {
-        // This is O(n^2), need to rework
+//        TreeSet<EntityAndDistance> enemiesAndDistances = this.distanceMatrixShipShip.get(ship.getId());
+//
+//        ArrayList<Ship> closeEnemyShips = new ArrayList<>();
+//        for(final EntityAndDistance enemyAndDistance: enemiesAndDistances)
+//        {
+//            if (enemyAndDistance.getDistance() < minDistance)
+//                closeEnemyShips.add((Ship) enemyAndDistance.getEntity());
+//            else
+//                break;
+//        }
+//
+//        return closeEnemyShips;
 
-        int index = this.planetIDs.indexOf(planet.getId());
+        ArrayList<Ship> closeEnemyShips = new ArrayList<>();
+        for(final Ship enemyShip: this.enemyShips)
+            if (enemyShip.getDistanceTo(ship) < minDistance)
+                closeEnemyShips.add(enemyShip);
 
-        Ship closestShip = ships.get(0);
+        return closeEnemyShips;
+    }
+
+    public Ship getClosestShip(final Ship ship)
+    {
         double minDistance = Double.MAX_VALUE;
-        for (int i = 0; i < this.numberOfShips; i++)
+        Ship closestShip = ship;
+
+        for(final Ship alliedShip: this.myShips)
         {
-            if (ships.contains(this.ships.get(i)))
+            double distance = alliedShip.getDistanceTo(ship);
+            if ((alliedShip != ship) && (distance < minDistance))
             {
-                if (this.distanceMatrixPlanetShip.get(index, i) < minDistance)
-                {
-                    minDistance = this.distanceMatrixPlanetShip.get(index, i);
-                    closestShip = this.ships.get(i);
-                }
+                minDistance = distance;
+                closestShip = alliedShip;
             }
         }
 
         return closestShip;
     }
 
-    public double averageDistanceFromPlayer(final Collection<Ship> myShips, final Collection<Ship> enemyShips)
-    {
-        double averageDistanceFromPlayer = 0;
-
-        for(final Ship myShip: myShips)
-        {
-            int indexMyShip = this.shipIDs.indexOf(myShip.getId());
-
-            for(final Ship enemyShip: enemyShips)
-            {
-                int indexEnemyShip = this.shipIDs.indexOf(enemyShip.getId());
-                averageDistanceFromPlayer += this.distanceMatrixShipShip.get(indexMyShip, indexEnemyShip);
-            }
-        }
-
-        return averageDistanceFromPlayer / myShips.size() / enemyShips.size();
-    }
-
-    public int countCloseEnemyShipsFromPlanet(final GameMap gameMap, final Planet planet, final double distance)
-    {
-        final int planetID = planet.getId();
-        int index = this.planetIDs.indexOf(planet.getId());
-
-        int count = 0;
-        for (int i = 0; i < this.numberOfShips; i++)
-            if (this.distanceMatrixPlanetShip.get(index, i) < distance)
-               count++;
-
-        return count;
-    }
-
-    public Ship getClosestShipFromShip(final GameMap gameMap, final Ship targetShip, final ArrayList<Ship> ships)
-    {
-        // This is O(n^2), need to rework
-        int index = this.shipIDs.indexOf(targetShip.getId());
-
-        Ship closestShip = ships.get(0);
-        double minDistance = Double.MAX_VALUE;
-        for(int i = 0; i < this.numberOfShips; i++)
-        {
-            if (ships.contains(this.ships.get(i)))
-            {
-                if(this.distanceMatrixShipShip.get(index, i) < minDistance)
-                {
-                    minDistance = this.distanceMatrixShipShip.get(index, i);
-                    closestShip = this.ships.get(i);
-                }
-            }
-        }
-
-        return closestShip;
-    }
-
-    public HashMap<Objective, Double> getClosestObjectiveFromShip(final ArrayList<Objective> objectives, final Ship ship, final int numberOfClosest)
+    public static HashMap<Objective, Double> getClosestObjectiveFromEntity(final ArrayList<Objective> objectives, final Entity entity, final int numberOfClosest)
     {
         HashMap<Objective, Double> distances = new HashMap<>();
         for(int i = 0; i < objectives.size(); i++)
-            distances.put(objectives.get(i), ship.getDistanceTo(objectives.get(i).getTargetEntity()));
+            distances.put(objectives.get(i), entity.getDistanceTo(objectives.get(i).getTargetEntity()));
 
         objectives.sort((i, j) -> distances.get(i) <= distances.get(j)? -1:1);
 
@@ -232,25 +131,27 @@ public class DistanceManager
         return closestObjectives;
     }
 
-    public double averageDistanceFromShips(final Planet planet, final int id)
+    public static HashMap<Fleet, Double> getClosestFleetsFromShip(final ArrayList<Fleet> fleets, final Entity entity, final int numberOfClosest)
     {
-        int index = this.planetIDs.indexOf(planet.getId());
-        double distances = 0;
-        int numberOfShips = 0;
+        HashMap<Fleet, Double> distances = new HashMap<>();
+        for(final Fleet fleet: fleets)
+            distances.put(fleet, entity.getDistanceTo(fleet.FleetCentroid()));
 
-        for (int i = 0; i < this.numberOfShips; i++)
+        fleets.sort((i, j) -> distances.get(i) <= distances.get(j)? -1:1);
+
+        HashMap<Fleet, Double> closestFleets = new HashMap<>();
+        for(int i = 0; i < numberOfClosest; i++)
         {
-            if(this.ships.get(i).getOwner() == id)
-            {
-                distances += this.distanceMatrixPlanetShip.get(index, i);
-                numberOfShips += 1;
-            }
+            if (i < fleets.size())
+                closestFleets.put(fleets.get(i), distances.get(fleets.get(i)));
+            else
+                break;
         }
 
-        return distances / numberOfShips;
+        return closestFleets;
     }
 
-    public Position computeStartingPoint(final Collection<Ship> ships)
+    public static Position computeStartingPoint(final Collection<Ship> ships)
     {
         double x = 0;
         double y = 0;
@@ -264,8 +165,12 @@ public class DistanceManager
         return new Position(x / ships.size(), y / ships.size());
     }
 
-    public Planet findPlanetFromID(final int ID)
+    public Planet findPlanetFromID(final int id)
     {
-        return this.planets.get(this.planetIDs.indexOf(ID));
+        for(final Planet planet: this.planets)
+            if (planet.getId() == id)
+                return planet;
+
+        return null;
     }
 }
