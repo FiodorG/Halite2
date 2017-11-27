@@ -11,15 +11,16 @@ public class MyBotRush
         gameDefinitions.put("distanceDiscountExponent", 1.5);       // Power exponent to discount by distance
 
         gameDefinitions.put("colonizationTurns",        50);        // Prioritize colonization during first n turns
-        gameDefinitions.put("colonizationBump",         100.0);     // Priority Bump when colonization phase
+        gameDefinitions.put("colonizationBump",         0.0);       // Priority Bump when colonization phase
+        gameDefinitions.put("colonizationMinShips",     0);         // Minimum ships allocated to colonization
 
         gameDefinitions.put("maxRushDistance",          130.0);     // Rush if enemy is closer than
-        gameDefinitions.put("rushPriority",             10e30);     // Priority for a rush order
+        gameDefinitions.put("rushPriority",             0.0);       // Priority for a rush order
         gameDefinitions.put("antiRushPriority",         10e30);     // Priority for a antirush order
         gameDefinitions.put("antiRushDistance",         50.0);      // Enable Antirush if enemy closer than
         gameDefinitions.put("rushTurns",                40);        // Enable rush/antirush during first n turns
-        gameDefinitions.put("rushMaxObjectives",        1);         // Max number of rush objectives issued
-        gameDefinitions.put("rushMaxShipsPerObjective", 1);         // Number of ships sent to rush by rush objective
+        gameDefinitions.put("rushMaxObjectives",        0);         // Max number of rush objectives issued
+        gameDefinitions.put("rushMaxShipsPerObjective", 0);         // Number of ships sent to rush by rush objective
 
         gameDefinitions.put("defendPriority",           100.0);     // Priority for defending planet under attack
         gameDefinitions.put("enemyShipsToDefend",       5);         // Enemy ships around your planet required to send defend order
@@ -28,13 +29,14 @@ public class MyBotRush
         gameDefinitions.put("enemyShipsToCrash",        5);         // Crash when #enemies are in range
         gameDefinitions.put("crashBelowHealth",         65.0);      // Crash when health below level
 
-        gameDefinitions.put("attackShipPriority",       50.0);      // Priority for regular enemy ships
+        gameDefinitions.put("attackShipPriority",       100.0);     // Priority for regular enemy ships
+        gameDefinitions.put("attackDockedShipPriority", 200.0);     // Priority for docked enemy ships
 
         return gameDefinitions;
     }
 
     public static void main(final String[] args)
     {
-        MyBotInternal.main(gameDefinitions());
+        MyBotInternal.main(gameDefinitions(), 2);
     }
 }

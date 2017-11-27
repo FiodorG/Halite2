@@ -1,18 +1,17 @@
 import java.util.HashMap;
 
-public class MyBot
+public class MyBotNoRush
 {
     public static HashMap<String,Object> gameDefinitions()
     {
         HashMap<String,Object> gameDefinitions = new HashMap<>();
-        gameDefinitions.put("botName",                  "v10");     // Name of the bot that will appear on screen
+        gameDefinitions.put("botName",                  "NORUSH");  // Name of the bot that will appear on screen
 
         gameDefinitions.put("maxPriority",              100.0);     // Higher bound of priorities (except special ones)
         gameDefinitions.put("distanceDiscountExponent", 1.5);       // Power exponent to discount by distance
 
         gameDefinitions.put("colonizationTurns",        50);        // Prioritize colonization during first n turns
-        gameDefinitions.put("colonizationBump",         0.0);       // Priority Bump when colonization phase
-        gameDefinitions.put("colonizationMinShips",     0);         // Minimum ships allocated to colonization
+        gameDefinitions.put("colonizationBump",         100.0);     // Priority Bump when colonization phase
 
         gameDefinitions.put("maxRushDistance",          130.0);     // Rush if enemy is closer than
         gameDefinitions.put("rushPriority",             0.0);       // Priority for a rush order
@@ -27,16 +26,15 @@ public class MyBot
 
         gameDefinitions.put("crashPriority",            0.0);       // Priority for crashing into other planets
         gameDefinitions.put("enemyShipsToCrash",        5);         // Crash when #enemies are in range
-        gameDefinitions.put("crashBelowHealth",         63.0);      // Crash when health below level
+        gameDefinitions.put("crashBelowHealth",         65.0);      // Crash when health below level
 
-        gameDefinitions.put("attackShipPriority",       100.0);     // Priority for regular enemy ships
-        gameDefinitions.put("attackDockedShipPriority", 200.0);     // Priority for docked enemy ships
+        gameDefinitions.put("attackShipPriority",       50.0);      // Priority for regular enemy ships
 
         return gameDefinitions;
     }
 
     public static void main(final String[] args)
     {
-        MyBotInternal.main(gameDefinitions(), 1);
+        MyBotInternal.main(gameDefinitions());
     }
 }

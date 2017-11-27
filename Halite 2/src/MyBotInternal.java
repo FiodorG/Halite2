@@ -1,5 +1,6 @@
 import core.*;
-import hlt.DebugLog;
+import core.CombatManager.CombatManager;
+
 import hlt.GameMap;
 import hlt.Move;
 import hlt.Networking;
@@ -9,44 +10,45 @@ import java.util.Map;
 
 public class MyBotInternal
 {
-    public static void main(final Map<String,Object> gameDefinitions)
+    public static void main(final Map<String,Object> gameDefinitions, int... args)
     {
-        Timer timer                         = new Timer();
-        GameState gameState                 = new GameState();
-        BehaviourManager behaviourManager   = new BehaviourManager(gameDefinitions, gameState);
+        CombatManager combatManager         = new CombatManager();
+        BehaviourManager behaviourManager   = new BehaviourManager(gameDefinitions);
         ObjectiveManager objectiveManager   = new ObjectiveManager();
         FleetManager fleetManager           = new FleetManager();
         NavigationManager navigationManager = new NavigationManager();
         DistanceManager distanceManager     = new DistanceManager();
 
-        final Networking networking         = new Networking();
-        final GameMap gameMap               = networking.initialize((String) gameDefinitions.get("botName"));
-        ArrayList<Move> moveList            = new ArrayList<>();
+        GameState gameState = new GameState(
+            combatManager,
+            behaviourManager,
+            objectiveManager,
+            fleetManager,
+            navigationManager,
+            distanceManager
+        );
+
+        ArrayList<Move> moveList    = new ArrayList<>();
+        final Networking networking = new Networking();
+        final GameMap gameMap       = networking.initialize((String) gameDefinitions.get("botName"));
 
         while(true)
         {
-//            timer.setCurrentTurnStartTime();
+            moveList.clear();
             gameMap.updateMap(Networking.readLineIntoMetadata());
-            logNewTurn(gameState.getTurn());
-            distanceManager.computeDistanceMatrices(gameMap);
-            gameState.updateGameState(gameMap, distanceManager);
+            gameState.updateGameState(gameMap);
 
-            objectiveManager.getObjectives(gameMap, distanceManager, behaviourManager);
-            fleetManager.assignFleetsToObjectives(gameMap, objectiveManager.getObjectives(), distanceManager, behaviourManager);
-            navigationManager.moveFleetsToObjective(gameMap, moveList, fleetManager, behaviourManager);
+            distanceManager.computeDistanceMatrices(gameState);
+            objectiveManager.getObjectives(gameState);
+            fleetManager.assignFleetsToObjectives(gameState);
 
-//            if (timer.timeToEndTurn()) break;
 
-            moveList = navigationManager.resolveMoves(moveList);
-            logMoves(moveList);
+            //combatManager.createCombatOperations(gameState);
+            //combatManager.resolveCombats(gameState, moveList);
+
+            navigationManager.moveFleetsToObjective(gameState, moveList);
+
             Networking.sendMoves(moveList);
         }
-    }
-
-    private static void logNewTurn(final int turn)  { DebugLog.addLog("\n\nTurn: " + Integer.toString(turn) + "\n"); }
-    private static void logMoves(final ArrayList<Move> moveList)
-    {
-        for(final Move move: moveList)
-            DebugLog.addLog(move.toString());
     }
 }

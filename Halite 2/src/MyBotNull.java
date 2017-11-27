@@ -10,7 +10,7 @@ public class MyBotNull
         final GameMap gameMap = networking.initialize("Null");
 
         final ArrayList<Move> moveList = new ArrayList<>();
-        for(;;)
+        while(true)
         {
             moveList.clear();
             gameMap.updateMap(Networking.readLineIntoMetadata());
