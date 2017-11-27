@@ -1,0 +1,103 @@
+public void assignFleetsToObjectives2(final GameState gameState, final ArrayList<Objective> objectives, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    {
+        updateFleets(gameState);
+        assignShipsToFleets(gameState);
+        resetObjectives(objectives);
+
+        for(final Fleet fleet: this.fleets)
+        {
+            Entity fleetCentroid = fleet.FleetCentroid();
+            HashMap<Objective, Double> objectivesAvailable = getAvailableObjectives(fleetCentroid, distanceManager);
+            Objective objective = selectObjective(fleetCentroid, objectivesAvailable, behaviourManager);
+            objective.decreaseRequiredShips();
+            updateObjectives(objective);
+            fleet.getObjectives().add(objective);
+        }
+
+        logFleets();
+    }
+
+    public void resetObjectives(final ArrayList<Objective> objectives)
+    {
+        this.unfilledObjectives.clear();
+        this.unfilledObjectives = new ArrayList<>(objectives);
+        this.filledObjectives.clear();
+    }
+
+    public void assignShipsToFleets(final GameState gameState)
+    {
+        ArrayList<Ship> availableShips = allAvailableShips(gameState);
+
+        for(final Ship ship: availableShips)
+        {
+            if (!shipToFleets.containsKey(ship.getId()))
+                assignShipToFleet(ship);
+            else
+                continue;
+        }
+    }
+
+    private void assignShipToFleet(final Ship ship)
+    {
+        ArrayList<Fleet> closeFleets = DistanceManager.getClosestFleetsFromShip(this.fleets, ship);
+
+        boolean joinsExistingFleet = false;
+        for (final Fleet fleet : closeFleets)
+        {
+            if (fleet.reinforcementNeed() > 0)
+            {
+                fleet.addShip(ship);
+                this.shipToFleets.put(ship.getId(), fleet);
+                joinsExistingFleet = true;
+                break;
+            }
+        }
+
+        if (!joinsExistingFleet)
+        {
+            Fleet fleet = new Fleet(ship, this.FleetId++);
+            this.fleets.add(fleet);
+            this.shipToFleets.put(ship.getId(), fleet);
+        }
+    }
+
+    private void updateFleets(final GameState gameState)
+    {
+        // Remove dead ships, and refresh new ones.
+
+        Iterator<Fleet> i = this.fleets.iterator();
+        while (i.hasNext())
+        {
+            Fleet fleet = i.next();
+            fleet.getObjectives().clear();
+            boolean removeFleet = false;
+
+            Iterator<Ship> j = fleet.getShips().iterator();
+            while (j.hasNext())
+            {
+                Ship ship = j.next();
+                int index = gameState.getMyShips().indexOf(ship);
+
+                if (index == -1)
+                {
+                    j.remove();
+                    shipToFleets.remove(ship);
+
+                    if (fleet.getShips().isEmpty())
+                        removeFleet = true;
+                }
+                else
+                    fleet.getShips().set(fleet.getShips().indexOf(ship), gameState.getMyShips().get(index));
+            }
+
+            if (removeFleet)
+                i.remove();
+        }
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+

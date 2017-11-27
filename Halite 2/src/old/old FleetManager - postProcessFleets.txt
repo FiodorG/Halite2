@@ -1,0 +1,76 @@
+
+    private void postProcessFleets(final GameState gameState)
+    {
+        int colonizationMinShips = gameState.getBehaviourManager().getColonizationMinShips();
+
+        if (this.shipsAssignedToColonization < colonizationMinShips)
+        {
+            while (colonizationMinShips > 0)
+            {
+                Planet planet = gameState.getDistanceManager().getClosestEmptyPlanetFromEntity(gameState.startingPoint());
+                if (planet == null)
+                    break;
+
+                Ship ship = gameState.getDistanceManager().findClosestShipFromPosition(planet, gameState.getMyId());
+                if (ship == null)
+                    break;
+
+                Objective objective = gameState.getObjectiveManager().findObjectiveFromEntityAndType(planet, Objective.OrderType.COLONIZE);
+
+                this.shipToFleets.get(ship.getId()).getShips().remove(ship);
+                this.shipToFleets.remove(ship.getId());
+
+                addShipToFleets(ship, objective);
+                updateObjectives(objective);
+
+                colonizationMinShips--;
+            }
+        }
+    }
+
+
+    public Planet getClosestEmptyPlanetFromEntity(final Position entity)
+    {
+        double minDistance = Double.MAX_VALUE;
+        Planet closestPlanet = null;
+
+        for(final Planet planet: this.planets)
+        {
+            double distance = planet.getDistanceTo(entity);
+            if ((distance < minDistance) && (!planet.isOwned()))
+            {
+                minDistance = distance;
+                closestPlanet = planet;
+            }
+        }
+
+        return closestPlanet;
+    }
+
+    public Ship findClosestShipFromPosition(final Position position, final int id)
+    {
+        double minDistance = Double.MAX_VALUE;
+        Ship closestShip = null;
+
+        for(final Ship ship: this.myShips)
+        {
+            double distance = ship.getDistanceTo(position);
+            if ((distance < minDistance) && (ship.getOwner() == id))
+            {
+                minDistance = distance;
+                closestShip = ship;
+            }
+        }
+
+        return closestShip;
+    }
+
+
+    public Objective findObjectiveFromEntityAndType(final Entity entity, final Objective.OrderType orderType)
+    {
+        for(final Objective objective: this.objectives)
+            if ((objective.getTargetEntity().equals(entity)) && (objective.getOrderType() == orderType))
+                return objective;
+
+        return null;
+    }
