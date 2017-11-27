@@ -1,6 +1,7 @@
 package hlt;
 
-public class Collision {
+public class Collision
+{
     /**
      * Test whether a given line segment intersects a circular area.
      *
@@ -10,7 +11,8 @@ public class Collision {
      * @param fudge  An additional safety zone to leave when looking for collisions. Probably set it to ship radius.
      * @return true if the segment intersects, false otherwise
      */
-    public static boolean segmentCircleIntersect(final Position start, final Position end, final Entity circle, final double fudge) {
+    public static boolean segmentCircleIntersect(final Position start, final Position end, final Entity circle, final double fudge)
+    {
         // Parameterize the segment as start + t * (end - start),
         // and substitute into the equation of a circle
         // Solve for t
@@ -31,16 +33,14 @@ public class Collision {
                             + square(startY) - (startY * endY)
                             - (startY * centerY) + (endY * centerY));
 
-        if (a == 0.0) {
+        if (a == 0.0)
             // Start and end are the same point
             return start.getDistanceTo(circle) <= circleRadius + fudge;
-        }
 
         // Time along segment when closest to the circle (vertex of the quadratic)
         final double t = Math.min(-b / (2 * a), 1.0);
-        if (t < 0) {
+        if (t < 0)
             return false;
-        }
 
         final double closestX = startX + dx * t;
         final double closestY = startY + dy * t;

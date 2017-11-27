@@ -1,5 +1,7 @@
 package hlt;
 
+import java.util.Objects;
+
 public class Ship extends Entity
 {
     public enum DockingStatus
@@ -38,6 +40,11 @@ public class Ship extends Entity
         return getDistanceTo(planet) <= Constants.DOCK_RADIUS + planet.getRadius();
     }
 
+    public boolean isUndocked()
+    {
+        return getDockingStatus() == DockingStatus.Undocked;
+    }
+
     @Override
     public boolean equals(Object object)
     {
@@ -56,9 +63,12 @@ public class Ship extends Entity
     {
         return "Ship[" +
                 super.toString() +
-                ", dockingStatus=" + dockingStatus +
-                ", dockedPlanet=" + dockedPlanet +
-                ", dockingProgress=" + dockingProgress +
+                ", status=" + dockingStatus +
+                ", dockPlanet=" + dockedPlanet +
+                ", dockTurns=" + dockingProgress +
                 "]";
     }
+
+    @Override
+    public int hashCode() { return Objects.hash(this.getId()); }
 }

@@ -11,29 +11,29 @@ public class Navigation
 {
     public static ThrustMove navigateShipToMove( final GameMap gameMap, final Ship ship, final Entity moveTarget, final int maxThrust)
     {
-        final int maxCorrections = 180;
+        final int maxCorrections = 90;
         final boolean avoidObstacles = true;
-        final double angularStepRad = Math.PI/180.0;
-        final double minimumDistance = moveTarget.getRadius() + ship.getRadius();
+        final double angularStepRad = Math.PI/45.0;
+        final double minimumDistance = moveTarget.getRadius() + ship.getRadius() + 1.0;
 
         return navigateShipTowardsTarget(gameMap, ship, moveTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad);
     }
 
     public static ThrustMove navigateShipToDock( final GameMap gameMap, final Ship ship, final Entity dockTarget, final int maxThrust)
     {
-        final int maxCorrections = 180;
+        final int maxCorrections = 90;
         final boolean avoidObstacles = true;
-        final double angularStepRad = Math.PI/180.0;
-        final double minimumDistance = dockTarget.getRadius() + ship.getRadius() + DOCK_RADIUS - 2.0;
+        final double angularStepRad = Math.PI/45.0;
+        final double minimumDistance = dockTarget.getRadius() + ship.getRadius() + 1.0;
 
         return navigateShipTowardsTarget(gameMap, ship, dockTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad);
     }
     
     public static ThrustMove navigateShipToCrashInto( final GameMap gameMap, final Ship ship, final Entity crashTarget, final int maxThrust)
     {
-        final int maxCorrections = 180;
+        final int maxCorrections = 90;
         final boolean avoidObstacles = true;
-        final double angularStepRad = Math.PI/180.0;
+        final double angularStepRad = Math.PI/45.0;
         final double minimumDistance = 0;
  
         return navigateShipTowardsTarget(gameMap, ship, crashTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad);
@@ -41,10 +41,10 @@ public class Navigation
  
     public static ThrustMove navigateShipToAttack( final GameMap gameMap, final Ship ship, final Entity attackTarget, final int maxThrust)
     {
-        final int maxCorrections = 180;
+        final int maxCorrections = 90;
         final boolean avoidObstacles = true;
-        final double angularStepRad = Math.PI/90.0;
-        final double minimumDistance = attackTarget.getRadius() + ship.getRadius() + WEAPON_RADIUS - 2.0;
+        final double angularStepRad = Math.PI/45.0;
+        final double minimumDistance = attackTarget.getRadius() + ship.getRadius() + 1.0;
  
         return navigateShipTowardsTarget(gameMap, ship, attackTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad);
     }
@@ -57,10 +57,11 @@ public class Navigation
             final boolean avoidObstacles,
             final int maxCorrections,
             final double minimumDistance,
-            final double angularStepRad)
+            final double angularStepRad
+    )
     {
         if (maxCorrections <= 0)
-            return null;
+            return new ThrustMove(ship, 0, 0);
 
         final double distance = ship.getDistanceTo(targetPos);
         final double angleRad = ship.orientTowardsInRad(targetPos);

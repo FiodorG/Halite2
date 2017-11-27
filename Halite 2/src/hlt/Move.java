@@ -19,6 +19,12 @@ public class Move
         this.ship = ship;
     }
 
+    public Move(final Move move)
+    {
+        this.type = move.getType();
+        this.ship = move.getShip();
+    }
+
     public MoveType getType() { return type; }
     public Ship getShip() { return ship; }
 

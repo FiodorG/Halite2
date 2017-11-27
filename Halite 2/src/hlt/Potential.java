@@ -4,7 +4,7 @@ import core.VectorBasic;
 
 public class Potential
 {
-	public static Double potential(Position position, Ship ship)
+	public static Double Potential(Position position, Ship ship)
 	{
 		Double distance = ship.getDistanceTo(position);
 		return 1.0/distance;
