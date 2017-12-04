@@ -5,6 +5,8 @@ import hlt.*;
 
 import java.util.*;
 
+import static core.GameState.applyMoveToShip;
+
 public class CombatManager
 {
     private ArrayList<CombatOperation> combatOperations;
@@ -95,102 +97,79 @@ public class CombatManager
 
     private static double combatBalanceManyShips(final ArrayList<Ship> myShips, final ArrayList<Ship> enemyShips)
     {
-        class MutableInt
-        {
-            int value;
-            public MutableInt(final int value) { this.value = value; }
-            public void increment(int increment) { this.value += increment; }
-            public void setValue(int newValue) { this.value = newValue; }
-            public int getValue() { return value; }
-
-            @Override
-            public String toString() { return Integer.toString(this.value); }
-        }
-
         int myId = myShips.get(0).getOwner();
 
-        HashMap<Integer,MutableInt> powerPerPlayer = new HashMap<>();
-        HashMap<Integer,MutableInt> lifePerPlayer = new HashMap<>();
-        HashMap<Integer,MutableInt> shipsPerPlayer = new HashMap<>();
+        HashMap<Integer,Double> damageTakenPerShip = new HashMap<>();
         HashMap<Integer,Integer> survivalTimePerShip = new HashMap<>();
+
+        HashMap<Integer,Integer> damagePerPlayer = new HashMap<>();
         HashMap<Integer,Integer> survivalTimePerPlayer = new HashMap<>();
+        HashMap<Integer,Integer> shipLostPerPlayer = new HashMap<>();
 
         final ArrayList<Ship> allShips = new ArrayList<>(myShips);
         allShips.addAll(enemyShips);
 
+        // Fill Arrays with default values
         for(final Ship ship: allShips)
         {
-            int owner = ship.getOwner();
-            MutableInt powerCount = powerPerPlayer.get(owner);
-            MutableInt lifeCount = lifePerPlayer.get(owner);
-            MutableInt shipsCount = shipsPerPlayer.get(owner);
-
-            int shipPower = (ship.getDockingStatus() == Ship.DockingStatus.Undocked)? 64 : 0;
-
-            if (powerCount == null)
-            {
-                powerPerPlayer.put(owner, new MutableInt(shipPower));
-                lifePerPlayer.put(owner, new MutableInt(ship.getHealth()));
-                shipsPerPlayer.put(owner, new MutableInt(1));
-                survivalTimePerPlayer.put(owner, 0);
-            }
-            else
-            {
-                powerCount.increment(shipPower);
-                lifeCount.increment(ship.getHealth());
-                shipsCount.increment(1);
-            }
+            damageTakenPerShip.put(ship.getId(), 0.0);
+            survivalTimePerShip.put(ship.getId(), Integer.MAX_VALUE);
+            damagePerPlayer.put(ship.getOwner(), 0);
+            shipLostPerPlayer.put(ship.getOwner(), 0);
         }
 
-        int totalPower = 0;
-        for(MutableInt power: powerPerPlayer.values())
-            totalPower += power.getValue();
-
-        for(final Ship ship: allShips)
+        // Fill who damages who
+        ArrayList<Ship> allEnemyShipsInRange = new ArrayList<>();
+        for(final Ship ship_i: allShips)
         {
-            int playerId = ship.getOwner();
+            if (!ship_i.isUndocked())
+                continue;
 
-            double damageTakenPerShip = (double)(totalPower - powerPerPlayer.get(playerId).getValue()) / (double)shipsPerPlayer.get(playerId).getValue();
-            int remainingTurnsToLive = (damageTakenPerShip != 0)? (int)((double)ship.getHealth() / damageTakenPerShip) + 1 : Integer.MAX_VALUE;
+            allEnemyShipsInRange.clear();
+            for(final Ship ship_j: allShips)
+                if ((ship_i.getOwner() != ship_j.getOwner()) && (ship_i.getDistanceTo(ship_j) <= 6.0))
+                    allEnemyShipsInRange.add(ship_j);
 
-            survivalTimePerShip.put(ship.getId(), remainingTurnsToLive);
+            for(final Ship ship_j: allEnemyShipsInRange)
+                damageTakenPerShip.put(ship_j.getId(), damageTakenPerShip.get(ship_j.getId()) + 64.0 / allEnemyShipsInRange.size());
+
+            if (!allEnemyShipsInRange.isEmpty())
+                damagePerPlayer.put(ship_i.getOwner(), damagePerPlayer.get(ship_i.getOwner()) + 64);
         }
 
+        if (damagePerPlayer.get(myId) == 0)
+            return 1.0;
+
+        // Survival time per ship
         for(final Ship ship: allShips)
-        {
-            int playerId = ship.getOwner();
-            int remainingTurnsToLive = survivalTimePerShip.get(ship.getId());
-
-            if (remainingTurnsToLive > survivalTimePerPlayer.get(playerId))
-                survivalTimePerPlayer.put(playerId, remainingTurnsToLive);
-        }
-
-        int turnsOfSurvivor = findLargest(survivalTimePerPlayer.values().toArray());
-        int combatDuration = findSecondLargest(survivalTimePerPlayer.values().toArray());
-        int noSurvivors = (turnsOfSurvivor == combatDuration)? 1 : 0;
-        int iWin = 0;
-        int alliedLosses = 0;
-        int enemyLosses = 0;
+            if (damageTakenPerShip.get(ship.getId()) != 0)
+                survivalTimePerShip.put(ship.getId(), (int)((double)ship.getHealth() / damageTakenPerShip.get(ship.getId())) + 1);
 
         for(final Ship ship: allShips)
         {
-            if (survivalTimePerShip.get(ship.getId()) <= combatDuration)
-            {
-                if (ship.getOwner() == myId)
-                    alliedLosses++;
-                else
-                    enemyLosses++;
-            }
-            else
-            {
-                if (ship.getOwner() == myId)
-                    iWin = 1;
-                else
-                    iWin = 0;
-            }
+            if ((survivalTimePerShip.get(ship.getId()) != Integer.MAX_VALUE))
+                if ((!survivalTimePerPlayer.containsKey(ship.getOwner())) || (survivalTimePerPlayer.get(ship.getOwner()) < survivalTimePerShip.get(ship.getId())))
+                    survivalTimePerPlayer.put(ship.getOwner(), survivalTimePerShip.get(ship.getId()));
         }
 
-        return (-1) * alliedLosses + enemyLosses + (-1) * noSurvivors;
+        // Combat ends when one player doesn't have ships anymore
+        Integer endOfCombat = findSecondLargest(survivalTimePerPlayer.values().toArray());
+        Integer mySurvivalTime = survivalTimePerPlayer.containsKey(myId)? survivalTimePerPlayer.get(myId) : Integer.MAX_VALUE;
+
+        // Ships lost at the end of combat, i.e. when only one player's ships remain
+        for(final Ship ship: allShips)
+            if (survivalTimePerShip.get(ship.getId()) <= endOfCombat)
+                shipLostPerPlayer.put(ship.getOwner(), shipLostPerPlayer.get(ship.getOwner()) + 1);
+
+        Integer mostShipsLost = findLargest(shipLostPerPlayer.values().toArray());
+        Integer myShipsLost = shipLostPerPlayer.get(myId);
+
+        boolean iWin = mySurvivalTime > endOfCombat;
+        boolean iLoose = mySurvivalTime <= endOfCombat;
+        boolean enemiesLostMoreShips = myShipsLost < mostShipsLost;
+        boolean enemiesLostLessShips = myShipsLost >= mostShipsLost;
+
+        return ((myShipsLost == 0)? 1.0 : 0.0) + (enemiesLostMoreShips? 1.0 : 0.0) + (enemiesLostLessShips? -1.0 : 0.0) + (iWin? 1.0 : 0.0) + (iLoose? -2.0 : 0.0);
     }
 
     private static double combatBalanceTwoShips(final ArrayList<Ship> myShips, final ArrayList<Ship> enemyShips)
@@ -208,11 +187,11 @@ public class CombatManager
         int enemyRemainingTurns = (myPower != 0)? enemyShip.getHealth() / myPower : Integer.MAX_VALUE;
 
         if (myRemainingTurns > enemyRemainingTurns)
-            return 1;
+            return 1.0;
         else if(myRemainingTurns == enemyRemainingTurns)
-            return -1;
+            return -1.0;
         else
-            return -1;
+            return -2.0;
     }
 
     private void clearCombatOperations()
@@ -222,13 +201,10 @@ public class CombatManager
         this.shipsToCombatOperations.clear();
     }
 
-    private static Integer findLargest(Object[] array)
+    private static Integer findLargest(final Object[] array)
     {
         int first;
         int arraySize = array.length;
-
-        if (arraySize < 2)
-            throw new IllegalStateException("Array should be at least 2 elements.");
 
         first = Integer.MIN_VALUE;
         for(int i = 0; i < arraySize ; i++)
@@ -248,7 +224,7 @@ public class CombatManager
         int arraySize = array.length;
 
         if (arraySize < 2)
-            throw new IllegalStateException("Array should be at least 2 elements.");
+            return (int)array[0];
 
         first = second = Integer.MIN_VALUE;
         for(int i = 0; i < arraySize ; i++)
@@ -277,38 +253,63 @@ public class CombatManager
         DebugLog.addLog("");
     }
 
-    public static double IsGoodMove(final Ship sourceShip, final Ship targetShip, final ThrustMove move, final GameState gameState)
+    public static double scoreShipMove(final Ship sourceShip, final Ship targetShip, final ThrustMove move, final GameState gameState)
     {
-        if (sourceShip.getDistanceTo(targetShip) > 12)
-            return 1;
+        Ship newSourceShipPosition = applyMoveToShip(sourceShip, move);
 
-        double scoreNoMove = combatBalanceForPosition(sourceShip, sourceShip, gameState);
-
-        Entity newPosition = new Entity(sourceShip.getOwner(), -1, sourceShip.getXPos() + move.dX(), sourceShip.getYPos() + move.dY(), 0, 0);
-        double scoreMove = combatBalanceForPosition(sourceShip, newPosition, gameState);
-
-        return scoreMove - scoreNoMove;
-    }
-
-    private static double combatBalanceForPosition(final Ship targetShip, final Entity entity, final GameState gameState)
-    {
         ArrayList<Ship> closeEnemyShips = new ArrayList<>();
-        ArrayList<Ship> closeAllyShips = new ArrayList<>();
-
         for(final Ship ship: gameState.getEnemyShips())
-            if (ship.getDistanceTo(entity) <= 7)
+            if (ship.getDistanceTo(newSourceShipPosition) <= 7.5)
                 closeEnemyShips.add(ship);
 
-        for(final Ship ship: gameState.getMyShips())
-            if (ship.getDistanceTo(entity) <= 7)
+        ArrayList<Ship> closeAllyShips = new ArrayList<>();
+        for(final Ship ship: gameState.getMyShipsNextTurn())
+            if (ship.getDistanceTo(newSourceShipPosition) <= 7.5)
                 closeAllyShips.add(ship);
 
         if (closeEnemyShips.isEmpty())
-            return 0;
+            return 1.0;
 
-        if (!closeAllyShips.contains(targetShip))
-            closeAllyShips.add(targetShip);
+        closeAllyShips.remove(sourceShip);
+        closeAllyShips.add(newSourceShipPosition);
 
         return combatBalance(closeAllyShips, closeEnemyShips);
+    }
+
+    public static double scoreFleetMove(final Fleet fleet, final Ship targetShip, final ArrayList<Move> moves, final GameState gameState)
+    {
+        ArrayList<Ship> newShipsPositions = new ArrayList<>();
+        for (int i = 0; i < fleet.getShips().size(); ++i)
+            newShipsPositions.add(applyMoveToShip(fleet.getShips().get(i), moves.get(i)));
+
+        Fleet newFleetPosition = new Fleet(newShipsPositions, fleet.getObjectives(), fleet.getId());
+
+        ArrayList<Ship> closeEnemyShips = new ArrayList<>();
+        for(final Ship ship: gameState.getEnemyShips())
+            if (ship.getDistanceTo(newFleetPosition.getCentroid()) <= 7.0 + fleet.getRadius() + 0.1)
+                closeEnemyShips.add(ship);
+
+        ArrayList<Ship> closeAllyShips = new ArrayList<>();
+        for(final Ship ship: gameState.getMyShipsNextTurn())
+            if (ship.getDistanceTo(newFleetPosition.getCentroid()) <= 7.0 + fleet.getRadius() + 0.1)
+                closeAllyShips.add(ship);
+
+        if (closeEnemyShips.isEmpty())
+            return 1.0;
+
+        closeAllyShips.removeAll(fleet.getShips());
+        closeAllyShips.addAll(newShipsPositions);
+
+        return combatBalance(closeAllyShips, closeEnemyShips);
+    }
+
+    public static double scoreCrashMove(final Ship sourceShip, final Ship targetShip, final ThrustMove move, final GameState gameState)
+    {
+        if ((sourceShip.getDistanceTo(targetShip) <= 7.0) &&
+            (sourceShip.getHealth() <= 127) &&
+            (targetShip.getHealth() == 255))
+            return 1.0;
+        else
+            return -1.0;
     }
 }

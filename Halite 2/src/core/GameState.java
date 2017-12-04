@@ -1,12 +1,16 @@
 package core;
 
 import core.CombatManager.CombatManager;
-import core.CombatManager.CombatOperation;
+import core.NavigationManager.GameGrid;
+import core.NavigationManager.NavigationManager;
 import hlt.*;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+
+import static hlt.Ship.DockingStatus.Undocked;
 
 public class GameState
 {
@@ -28,13 +32,16 @@ public class GameState
     private int numberOfPlayers;
 
     private final ArrayList<Ship> myShips;
+    private final ArrayList<Ship> myShipsNextTurn;
+    private final ArrayList<Fleet> myFleetsNextTurn;
     private final ArrayList<Ship> enemyShips;
-
     private final ArrayList<Planet> planets;
 
     HashMap<Integer, Integer> numberOfPlanetsByPlayer;
     HashMap<Integer, Integer> numberOfShipsByPlayer;
     HashMap<Integer, Position> startingPointByPlayers;
+    Position centerOfMap;
+    GameGrid gameGrid;
 
     public HashMap<Integer, Position> getStartingPointByPlayers() { return startingPointByPlayers; }
     public int getMyId() { return myId; }
@@ -43,6 +50,8 @@ public class GameState
     public GameMap getGameMap() { return gameMap; }
     public ArrayList<Ship> getEnemyShips() { return enemyShips; }
     public ArrayList<Ship> getMyShips() { return myShips; }
+    public ArrayList<Ship> getMyShipsNextTurn() { return myShipsNextTurn; }
+    public ArrayList<Fleet> getMyFleetsNextTurn() { return myFleetsNextTurn; }
 
     public CombatManager getCombatManager() { return combatManager; }
     public BehaviourManager getBehaviourManager() { return behaviourManager; }
@@ -53,6 +62,10 @@ public class GameState
     public Timer getTimer() { return timer; }
     public HashMap<Integer, Position> startingPointByPlayers() { return startingPointByPlayers; }
     public Position startingPoint() { return startingPointByPlayers.get(myId); }
+    public Position getCenterOfMap() { return centerOfMap; }
+    public int getMapSizeX() { return mapSizeX; }
+    public int getMapSizeY() { return mapSizeY; }
+    public GameGrid getGameGrid() { return gameGrid; }
 
     public GameState(final CombatManager combatManager,
                      final BehaviourManager behaviourManager,
@@ -67,15 +80,19 @@ public class GameState
         this.fleetManager = fleetManager;
         this.navigationManager = navigationManager;
         this.distanceManager = distanceManager;
+        this.gameGrid = null;
 
         this.timer = new Timer();
-        this.turn = 0;
+        this.turn = -1;
         this.myId = 0;
         this.mapSizeX = 0;
         this.mapSizeY = 0;
+        this.centerOfMap = null;
         this.numberOfPlayers = 0;
 
         this.myShips = new ArrayList<>();
+        this.myShipsNextTurn = new ArrayList<>();
+        this.myFleetsNextTurn = new ArrayList<>();
         this.enemyShips = new ArrayList<>();
         this.planets = new ArrayList<>();
 
@@ -86,26 +103,35 @@ public class GameState
 
     public void updateGameState(final GameMap gameMap)
     {
+        this.turn++;
+
         this.gameMap = gameMap;
 
         this.mapSizeX = gameMap.getWidth();
         this.mapSizeY = gameMap.getHeight();
         this.myId = gameMap.getMyPlayerId();
-        this.numberOfPlayers = gameMap.getAllPlayers().size();
+        this.numberOfPlayers = gameMap.getNumberOfPlayers();
 
         // Store my ships and enemy ones to iterate easily
         this.myShips.clear();
+        this.myShipsNextTurn.clear();
+        this.myFleetsNextTurn.clear();
         this.enemyShips.clear();
+
         for(final Ship ship: gameMap.getAllShips())
         {
             if(ship.getOwner() != this.myId)
                 this.enemyShips.add(ship);
             else
+            {
                 this.myShips.add(ship);
+                this.myShipsNextTurn.add(new Ship(ship));
+            }
         }
+        addFutureEnemyShips();
 
-        for(final Planet planet: gameMap.getAllPlanets().values())
-            this.planets.add(planet);
+        this.planets.clear();
+        this.planets.addAll(gameMap.getAllPlanets().values());
 
         // Balance of power calculation
         for(final Player player: gameMap.getAllPlayers())
@@ -122,21 +148,118 @@ public class GameState
             this.numberOfShipsByPlayer.put(ship.getOwner(), this.numberOfShipsByPlayer.get(ship.getOwner())+1);
 
         if(this.turn == 0)
+        {
             for(final Player player: gameMap.getAllPlayers())
                 this.startingPointByPlayers.put(player.getId(), DistanceManager.computeStartingPoint(player.getShips().values()));
+            this.centerOfMap = new Position(this.mapSizeX / 2, this.mapSizeY / 2);
+        }
 
-        this.turn++;
+        this.gameGrid = new GameGrid(this);
 
         logState();
     }
 
-    public boolean emptyPlanetsExist()
+    private void addFutureEnemyShips()
     {
-        for(final Planet planet: this.planets)
-            if (!planet.isOwned())
-                return true;
+        int id = 0;
+        for(final Planet planet: gameMap.getAllPlanets().values())
+        {
+            if ((planet.getOwner() != myId) && (planet.getTurnsToNextShip() == 0))
+            {
+                Position spawnPosition = centerOfMap.getClosestPoint(planet, 2.0);
+                this.enemyShips.add(new Ship(planet.getOwner(), getTurn() * 200 + id, spawnPosition.getXPos(), spawnPosition.getYPos(), 255, Undocked, -1, 0, 0));
+            }
+        }
+    }
 
-        return false;
+    public static Ship applyMoveToShip(final Ship ship, final Move move)
+    {
+        Ship newShip;
+        if (move instanceof ThrustMove)
+            newShip = new Ship(
+                    ship.getOwner(),
+                    ship.getId(),
+                    ship.getXPos() + ((ThrustMove)move).dX(),
+                    ship.getYPos() + ((ThrustMove)move).dY(),
+                    ship.getHealth(),
+                    ship.getDockingStatus(),
+                    ship.getDockedPlanet(),
+                    ship.getDockingProgress(),
+                    ship.getWeaponCooldown()
+            );
+        else if (move instanceof DockMove)
+        {
+            newShip = new Ship(
+                    ship.getOwner(),
+                    ship.getId(),
+                    ship.getXPos(),
+                    ship.getYPos(),
+                    ship.getHealth(),
+                    Ship.DockingStatus.Docking,
+                    ship.getDockedPlanet(),
+                    ship.getDockingProgress(),
+                    ship.getWeaponCooldown()
+            );
+        }
+        else
+            newShip = ship;
+
+        return newShip;
+    }
+
+    public void moveShip(final Ship ship, final Move move)
+    {
+        Ship newShip = applyMoveToShip(ship, move);
+
+        this.myShipsNextTurn.remove(ship);
+        this.myShipsNextTurn.add(newShip);
+    }
+
+    public void moveShips(final ArrayList<Ship> ships, final ArrayList<Move> moves)
+    {
+        // ships and moves should be co-ordered.
+
+        if (ships.size() != moves.size())
+            throw new IllegalStateException("ships and moves have different sizes.");
+
+        for (int i = 0; i < ships.size(); ++i)
+            moveShip(ships.get(i), moves.get(i));
+    }
+
+    public void moveFleet(final Fleet fleet, final ArrayList<Move> moves)
+    {
+        // ships and moves should be co-ordered.
+
+        if (fleet.getShips().size() != moves.size())
+            throw new IllegalStateException("ships and moves have different sizes.");
+
+        ArrayList<Ship> newShips = new ArrayList<>();
+        for (int i = 0; i < fleet.getShips().size(); ++i)
+           newShips.add(applyMoveToShip(fleet.getShips().get(i), moves.get(i)));
+
+        this.myFleetsNextTurn.add(new Fleet(newShips, fleet.getObjectives(), fleet.getId()));
+    }
+
+    public ArrayList<Entity> objectsBetween(final Position start, final Position target, final double entityRadius)
+    {
+        final ArrayList<Entity> entitiesFound = new ArrayList<>();
+
+        addEntitiesBetween(entitiesFound, start, target, this.planets, entityRadius);
+        addEntitiesBetween(entitiesFound, start, target, this.myShipsNextTurn, entityRadius);
+        addEntitiesBetween(entitiesFound, start, target, this.enemyShips, entityRadius);
+
+        return entitiesFound;
+    }
+
+    private static void addEntitiesBetween(final List<Entity> entitiesFound, final Position start, final Position target, final Collection<? extends Entity> entitiesToCheck, final double entityRadius)
+    {
+        for (final Entity entity : entitiesToCheck)
+        {
+            if (entity.equals(start) || entity.equals(target))
+                continue;
+            if (Collision.segmentCircleIntersect(start, target, entity, entityRadius))
+                entitiesFound.add(entity);
+        }
     }
 
     public void logState()

@@ -14,9 +14,11 @@ public class Objective
         REINFORCECOLONY,
         CRASHINTO,
         MOVE,
-        COMBINE,
+        GROUP,
         RUSH,
         ANTIRUSH,
+        ASSASSINATION,
+        LURE
     }
 
     private final Entity targetEntity;
@@ -33,6 +35,8 @@ public class Objective
     public boolean getSuperObjective() { return superObjective; }
     public int getId() { return Id; }
     public void decreaseRequiredShips(int value) { this.requiredShips -= value; }
+    public boolean isAttackObjective() { if ((this.orderType == OrderType.ATTACK) || (this.orderType == OrderType.RUSH)) return true; else return false; }
+    public boolean isSuperObjective() { return superObjective; }
 
     public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective, final int Id)
     {
@@ -55,8 +59,7 @@ public class Objective
 
         Objective objective = (Objective) object;
         return  (this.getTargetEntity().equals(objective.getTargetEntity())) &&
-                (this.getOrderType() == objective.getOrderType()) &&
-                (this.getId() == objective.getId());
+                (this.getOrderType() == objective.getOrderType());
     }
 
     @Override

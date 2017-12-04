@@ -7,15 +7,18 @@ import java.util.*;
 public class ObjectiveManager
 {
     private ArrayList<Objective> objectives;
+    private ArrayList<Objective> superObjectives;
     private int objectiveId;
 
     public ObjectiveManager()
     {
         this.objectives = new ArrayList<>();
+        this.superObjectives = new ArrayList<>();
         this.objectiveId = 0;
     }
 
     public ArrayList<Objective> getObjectives() { return objectives; }
+    public ArrayList<Objective> getSuperObjectives() { return superObjectives; }
 
     public void getObjectives(final GameState gameState)
     {
@@ -24,23 +27,25 @@ public class ObjectiveManager
         DistanceManager distanceManager = gameState.getDistanceManager();
         BehaviourManager behaviourManager = gameState.getBehaviourManager();
 
-        //this.objectives.addAll(getRushObjectives(gameMap, distanceManager, behaviourManager));
-        this.objectives.addAll(getAntiRushObjectives(gameState, distanceManager, behaviourManager));
-        this.objectives.addAll(getColonizeObjectives(gameState, distanceManager, behaviourManager));
-        this.objectives.addAll(getAttackObjectives(gameState, distanceManager, behaviourManager));
-        this.objectives.addAll(getDefendObjectives(gameState, distanceManager, behaviourManager));
+        //getRushObjectives(gameMap, distanceManager, behaviourManager);
+        getAntiRushObjectives(gameState, distanceManager, behaviourManager);
+        getColonizeObjectives(gameState, distanceManager, behaviourManager);
+        getAttackObjectives(gameState, distanceManager, behaviourManager);
+        getDefendObjectives(gameState, distanceManager, behaviourManager);
+
+        getAssassinationObjectives(gameState, distanceManager, behaviourManager);
+        getLureObjectives(gameState, distanceManager, behaviourManager);
 
         removeZeroPriorityObjectives();
         sortObjectives(this.objectives);
         logObjectives();
     }
 
-    private ArrayList<Objective> getRushObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    private void getRushObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
         if (!behaviourManager.isValidTurnForRush(gameState))
-            return new ArrayList<>();
+            return;
 
-        ArrayList<Objective> objectives = new ArrayList<>();
         for(final Ship ship : gameState.getEnemyShips())
         {
             Objective objective;
@@ -69,23 +74,20 @@ public class ObjectiveManager
             else
                 continue;
 
-            objectives.add(objective);
+            superObjectives.add(objective);
         }
-
-        return objectives;
     }
 
-    private ArrayList<Objective> getAntiRushObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    private void getAntiRushObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
         if (!behaviourManager.isValidTurnForRush(gameState))
-            return new ArrayList<>();
+            return;
 
-        ArrayList<Objective> objectives = new ArrayList<>();
         for(final Ship ship : gameState.getEnemyShips())
         {
             Objective objective;
 
-            // Then antirush anything that goes too close
+            // Antirush anything that goes too close
             objective = new Objective(
                 ship,
                 behaviourManager.getShipPriorityForAntiRush(gameState, distanceManager, ship),
@@ -97,15 +99,12 @@ public class ObjectiveManager
 
             objectives.add(objective);
         }
-
-        return objectives;
     }
 
-    private ArrayList<Objective> getColonizeObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    private void getColonizeObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
         Map<Integer, Planet> planets = gameState.getGameMap().getAllPlanets();
 
-        ArrayList<Objective> objectives = new ArrayList<>();
         for(final Planet planet : planets.values())
         {
             Objective objective;
@@ -137,13 +136,10 @@ public class ObjectiveManager
 
             objectives.add(objective);
         }
-
-        return objectives;
     }
 
-    private ArrayList<Objective> getAttackObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    private void getAttackObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
-        ArrayList<Objective> objectives = new ArrayList<>();
         for(final Ship ship : gameState.getEnemyShips())
         {
             Objective objective;
@@ -172,13 +168,10 @@ public class ObjectiveManager
 
             objectives.add(objective);
         }
-
-        return objectives;
     }
 
-    private ArrayList<Objective> getDefendObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    private void getDefendObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
-        ArrayList<Objective> objectives = new ArrayList<>();
         for(final Ship ship : gameState.getMyShips())
         {
             Objective objective;
@@ -199,17 +192,88 @@ public class ObjectiveManager
 
             objectives.add(objective);
         }
+    }
 
-        return objectives;
+    private void getAssassinationObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    {
+        Map<Integer, Planet> planets = gameState.getGameMap().getAllPlanets();
+
+        int numberOfAssassinationObjectives = behaviourManager.getNumberOfAssassinationObjectives();
+
+        for(final Planet planet : planets.values())
+        {
+            Objective objective;
+
+            if ((planet.getOwner() != gameState.getMyId()) && planet.isFull())
+            {
+                double priority = behaviourManager.getPlanetPriorityForAssassination(gameState, planet);
+                if (priority > 0)
+                {
+                    objective = new Objective(
+                            planet,
+                            priority,
+                            1,
+                            Objective.OrderType.ASSASSINATION,
+                            true,
+                            this.objectiveId++
+                    );
+                    superObjectives.add(objective);
+                    numberOfAssassinationObjectives--;
+                    if (numberOfAssassinationObjectives == 0)
+                        return;
+                }
+            }
+        }
+    }
+
+    private void getLureObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    {
+        Objective objective;
+
+        // Try docked ships...
+        for(final Ship ship : gameState.getEnemyShips())
+        {
+            if (ship.getDockingStatus() != Ship.DockingStatus.Undocked)
+            {
+                objective = new Objective(
+                        ship,
+                        behaviourManager.getPlanetPriorityForLure(gameState, ship),
+                        1,
+                        Objective.OrderType.LURE,
+                        true,
+                        this.objectiveId++
+                );
+                this.superObjectives.add(objective);
+                return;
+            }
+        }
+
+        // ... Otherwise, go for non-docked ones.
+        for(final Ship ship : gameState.getEnemyShips())
+        {
+            objective = new Objective(
+                    ship,
+                    behaviourManager.getPlanetPriorityForLure(gameState, ship),
+                    1,
+                    Objective.OrderType.LURE,
+                    true,
+                    this.objectiveId++
+            );
+            this.superObjectives.add(objective);
+            return;
+        }
     }
 
     public void clearObjectives()
     {
         this.objectives.clear();
+        this.superObjectives.clear();
     }
     private void sortObjectives(final ArrayList<Objective> objectives)  { objectives.sort(Comparator.comparingDouble(Objective::getPriority).reversed()); }
     private void logObjectives()
     {
+        for(final Objective objective: this.superObjectives)
+            DebugLog.addLog(objective.toString());
         for(final Objective objective: this.objectives)
             DebugLog.addLog(objective.toString());
         DebugLog.addLog("");
@@ -223,5 +287,13 @@ public class ObjectiveManager
                 filteredObjectives.add(objective);
 
         this.objectives = filteredObjectives;
+
+        ArrayList<Objective> filteredSuperObjectives = new ArrayList<>();
+
+        for(final Objective objective: this.superObjectives)
+            if (objective.getPriority() != 0)
+                filteredSuperObjectives.add(objective);
+
+        this.superObjectives = filteredSuperObjectives;
     }
 }

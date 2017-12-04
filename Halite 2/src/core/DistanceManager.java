@@ -70,30 +70,17 @@ public class DistanceManager
         return this.distanceMatrixShipShip.get(ship.getId()).first().getDistance();
     }
 
-    public ArrayList<Ship> getEnemiesCloserThan(final Ship ship, final double minDistance)
+    public ArrayList<Ship> getEnemiesCloserThan(final Entity entity, final double minDistance)
     {
-//        TreeSet<EntityAndDistance> enemiesAndDistances = this.distanceMatrixShipShip.get(ship.getId());
-//
-//        ArrayList<Ship> closeEnemyShips = new ArrayList<>();
-//        for(final EntityAndDistance enemyAndDistance: enemiesAndDistances)
-//        {
-//            if (enemyAndDistance.getDistance() < minDistance)
-//                closeEnemyShips.add((Ship) enemyAndDistance.getEntity());
-//            else
-//                break;
-//        }
-//
-//        return closeEnemyShips;
-
         ArrayList<Ship> closeEnemyShips = new ArrayList<>();
         for(final Ship enemyShip: this.enemyShips)
-            if (enemyShip.getDistanceTo(ship) < minDistance)
+            if (enemyShip.getDistanceTo(entity) < minDistance)
                 closeEnemyShips.add(enemyShip);
 
         return closeEnemyShips;
     }
 
-    public Ship getClosestShip(final Ship ship)
+    public Ship getClosestAllyShip(final Ship ship)
     {
         double minDistance = Double.MAX_VALUE;
         Ship closestShip = ship;
@@ -102,6 +89,24 @@ public class DistanceManager
         {
             double distance = alliedShip.getDistanceTo(ship);
             if ((alliedShip != ship) && (distance < minDistance))
+            {
+                minDistance = distance;
+                closestShip = alliedShip;
+            }
+        }
+
+        return closestShip;
+    }
+
+    public Ship getClosestAllyShipFromFleet(final Fleet fleet)
+    {
+        double minDistance = Double.MAX_VALUE;
+        Ship closestShip = fleet.getShips().get(0);
+
+        for(final Ship alliedShip: this.myShips)
+        {
+            double distance = alliedShip.getDistanceTo(fleet.getCentroid());
+            if (!fleet.getShips().contains(alliedShip) && (distance < minDistance))
             {
                 minDistance = distance;
                 closestShip = alliedShip;
@@ -135,7 +140,7 @@ public class DistanceManager
     {
         HashMap<Fleet, Double> distances = new HashMap<>();
         for(final Fleet fleet: fleets)
-            distances.put(fleet, entity.getDistanceTo(fleet.FleetCentroid()));
+            distances.put(fleet, entity.getDistanceTo(fleet.getCentroid()));
 
         fleets.sort((i, j) -> distances.get(i) <= distances.get(j)? -1:1);
 
@@ -163,14 +168,5 @@ public class DistanceManager
         }
 
         return new Position(x / ships.size(), y / ships.size());
-    }
-
-    public Planet findPlanetFromID(final int id)
-    {
-        for(final Planet planet: this.planets)
-            if (planet.getId() == id)
-                return planet;
-
-        return null;
     }
 }
