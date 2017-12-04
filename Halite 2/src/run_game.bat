@@ -3,5 +3,5 @@ javac MyBotRush.java
 javac MyBotNoRush.java
 
 
-halite -d "240 120" "java MyBot" "java MyBotRush"
+halite "java MyBot" "java MyBotRush"
 pause

@@ -1,11 +1,9 @@
 import core.*;
 import core.CombatManager.CombatManager;
 
+import core.NavigationManager.NavigationManager;
 import hlt.GameMap;
-import hlt.Move;
 import hlt.Networking;
-
-import java.util.ArrayList;
 import java.util.Map;
 
 public class MyBotInternal
@@ -28,27 +26,26 @@ public class MyBotInternal
             distanceManager
         );
 
-        ArrayList<Move> moveList    = new ArrayList<>();
         final Networking networking = new Networking();
         final GameMap gameMap       = networking.initialize((String) gameDefinitions.get("botName"));
 
         while(true)
         {
-            moveList.clear();
             gameMap.updateMap(Networking.readLineIntoMetadata());
             gameState.updateGameState(gameMap);
 
             distanceManager.computeDistanceMatrices(gameState);
             objectiveManager.getObjectives(gameState);
-            fleetManager.assignFleetsToObjectives(gameState);
-
+            fleetManager.assignShips(gameState);
 
             //combatManager.createCombatOperations(gameState);
             //combatManager.resolveCombats(gameState, moveList);
 
-            navigationManager.moveFleetsToObjective(gameState, moveList);
+            navigationManager.generateMoves(gameState);
+            Networking.sendMoves(navigationManager.getMoves());
 
-            Networking.sendMoves(moveList);
+            if (gameState.getTurn() > 100000)
+                break;
         }
     }
 }

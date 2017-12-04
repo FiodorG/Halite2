@@ -8,10 +8,10 @@ public class MyBotRush
         gameDefinitions.put("botName",                  "RUSH");    // Name of the bot that will appear on screen
 
         gameDefinitions.put("maxPriority",              100.0);     // Higher bound of priorities (except special ones)
-        gameDefinitions.put("distanceDiscountExponent", 1.5);       // Power exponent to discount by distance
+        gameDefinitions.put("distanceDiscountExponent", 2.0);       // Power exponent to discount by distance
 
         gameDefinitions.put("colonizationTurns",        50);        // Prioritize colonization during first n turns
-        gameDefinitions.put("colonizationBump",         0.0);       // Priority Bump when colonization phase
+        gameDefinitions.put("colonizationBump",         50.0);       // Priority Bump when colonization phase
         gameDefinitions.put("colonizationMinShips",     0);         // Minimum ships allocated to colonization
 
         gameDefinitions.put("maxRushDistance",          130.0);     // Rush if enemy is closer than
@@ -27,10 +27,14 @@ public class MyBotRush
 
         gameDefinitions.put("crashPriority",            0.0);       // Priority for crashing into other planets
         gameDefinitions.put("enemyShipsToCrash",        5);         // Crash when #enemies are in range
-        gameDefinitions.put("crashBelowHealth",         65.0);      // Crash when health below level
+        gameDefinitions.put("crashBelowHealth",         63.0);      // Crash when health below level
 
         gameDefinitions.put("attackShipPriority",       100.0);     // Priority for regular enemy ships
-        gameDefinitions.put("attackDockedShipPriority", 200.0);     // Priority for docked enemy ships
+        gameDefinitions.put("attackDockedShipPriority", 100.0);     // Priority for docked enemy ships
+        gameDefinitions.put("lurePriority",             0.0);       // Priority to send ship to lure adversary
+        gameDefinitions.put("assassinationPriority",    0.0);       // Priority to send ships around to try to target docked ships
+        gameDefinitions.put("assassinationTurns",       60);        // Turns after which initiate assassination missions
+        gameDefinitions.put("numberOfAssassinationObjectives", 2);  // Number of assassination objectives to issue
 
         return gameDefinitions;
     }
