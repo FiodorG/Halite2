@@ -40,51 +40,8 @@ public class GameMap
     public Planet getPlanet(final int entityId) { return planets.get(entityId); }
     public Map<Integer, Planet> getAllPlanets() { return planets; }
     public List<Ship> getAllShips() { return allShipsUnmodifiable; }
+    public int getNumberOfPlayers() { return players.size(); }
     public Ship getShip(final int playerId, final int entityId) throws IndexOutOfBoundsException { return players.get(playerId).getShip(entityId); }
-
-    public ArrayList<Entity> objectsBetween(Position start, Position target)
-    {
-        final ArrayList<Entity> entitiesFound = new ArrayList<>();
-
-        addEntitiesBetween(entitiesFound, start, target, planets.values());
-        addEntitiesBetween(entitiesFound, start, target, allShips);
-
-        return entitiesFound;
-    }
-
-    private static void addEntitiesBetween(final List<Entity> entitiesFound, final Position start, final Position target, final Collection<? extends Entity> entitiesToCheck)
-    {
-        for (final Entity entity : entitiesToCheck)
-        {
-            if (entity.equals(start) || entity.equals(target))
-                continue;
-            if (Collision.segmentCircleIntersect(start, target, entity, Constants.FORECAST_FUDGE_FACTOR))
-                entitiesFound.add(entity);
-        }
-    }
-
-    public Map<Double, Entity> nearbyEntitiesByDistance(final Entity entity)
-    {
-        final Map<Double, Entity> entityByDistance = new TreeMap<>();
-
-        for (final Planet planet : planets.values())
-        {
-            if (planet.equals(entity))
-                continue;
-
-            entityByDistance.put(entity.getDistanceTo(planet), planet);
-        }
-
-        for (final Ship ship : allShips)
-        {
-            if (ship.equals(entity))
-                continue;
-
-            entityByDistance.put(entity.getDistanceTo(ship), ship);
-        }
-
-        return entityByDistance;
-    }
 
     public GameMap updateMap(final Metadata mapMetadata)
     {

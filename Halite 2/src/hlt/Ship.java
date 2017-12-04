@@ -1,5 +1,7 @@
 package hlt;
 
+import core.Objective;
+
 import java.util.Objects;
 
 public class Ship extends Entity
@@ -16,6 +18,7 @@ public class Ship extends Entity
     private final int dockedPlanet;
     private final int dockingProgress;
     private final int weaponCooldown;
+    private Objective objective;
 
     public Ship(final int owner, final int id, final double xPos, final double yPos,
                 final int health, final DockingStatus dockingStatus, final int dockedPlanet,
@@ -28,18 +31,29 @@ public class Ship extends Entity
         this.dockedPlanet = dockedPlanet;
         this.dockingProgress = dockingProgress;
         this.weaponCooldown = weaponCooldown;
+        this.objective = null;
+    }
+
+    public Ship(final Ship ship)
+    {
+        super(ship.getOwner(), ship.getId(), ship.getXPos(), ship.getYPos(), ship.getHealth(), Constants.SHIP_RADIUS);
+
+        this.dockingStatus = ship.getDockingStatus();
+        this.dockedPlanet = ship.getDockedPlanet();
+        this.dockingProgress = ship.getDockingProgress();
+        this.weaponCooldown = ship.getWeaponCooldown();
+        this.objective = null;
     }
 
     public int getWeaponCooldown() { return weaponCooldown; }
     public DockingStatus getDockingStatus() { return dockingStatus; }
     public int getDockingProgress() { return dockingProgress; }
     public int getDockedPlanet() { return dockedPlanet; }
+    public Objective getObjective() { return objective; }
 
-    public boolean canDock(final Planet planet)
-    {
-        return getDistanceTo(planet) <= Constants.DOCK_RADIUS + planet.getRadius();
-    }
+    public void setObjective(final Objective objective) { this.objective = objective; }
 
+    public boolean canDock(final Planet planet) { return getDistanceTo(planet) <= Constants.DOCK_RADIUS + planet.getRadius(); }
     public boolean isUndocked()
     {
         return getDockingStatus() == DockingStatus.Undocked;
@@ -61,11 +75,12 @@ public class Ship extends Entity
     @Override
     public String toString()
     {
-        return "Ship[" +
+        return "Ship" + this.getId() + "[" +
                 super.toString() +
-                ", status=" + dockingStatus +
-                ", dockPlanet=" + dockedPlanet +
-                ", dockTurns=" + dockingProgress +
+                ", status=" + this.dockingStatus +
+                ", dockPlanet=" + this.dockedPlanet +
+                ", dockTurns=" + this.dockingProgress +
+                ", obj=" + ((this.objective == null)? "null" : this.objective.toString()) +
                 "]";
     }
 

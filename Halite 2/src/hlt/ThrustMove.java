@@ -4,12 +4,14 @@ public class ThrustMove extends Move
 {
     private int angleDeg;
     private int thrust;
+    private double priorityMove;
 
-    public ThrustMove(final Ship ship, final int angleDeg, final int thrust)
+    public ThrustMove(final Ship ship, final int angleDeg, final int thrust, final double priorityMove)
     {
         super(MoveType.Thrust, ship);
         this.thrust = thrust;
         this.angleDeg = angleDeg;
+        this.priorityMove = priorityMove;
     }
 
     public ThrustMove(final ThrustMove thrustMove)
@@ -17,10 +19,12 @@ public class ThrustMove extends Move
         super(thrustMove.getType(), thrustMove.getShip());
         this.thrust = thrustMove.getThrust();
         this.angleDeg = thrustMove.getAngle();
+        this.priorityMove = thrustMove.getPriorityMove();
     }
 
     public int getAngle() { return angleDeg; }
     public int getThrust() { return thrust; }
+    public double getPriorityMove() { return priorityMove; }
 
     public void setThrust(int thrust) { this.thrust = thrust; }
 

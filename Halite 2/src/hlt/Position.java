@@ -2,7 +2,6 @@ package hlt;
 
 public class Position
 {
-
     private final double xPos;
     private final double yPos;
 
@@ -22,11 +21,6 @@ public class Position
         return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
     }
 
-    public int orientTowardsInDeg(final Position target)
-    {
-        return Util.angleRadToDegClipped(orientTowardsInRad(target));
-    }
-
     public double orientTowardsInRad(final Position target)
     {
         final double dx = target.getXPos() - xPos;
@@ -35,13 +29,18 @@ public class Position
         return Math.atan2(dy, dx) + 2 * Math.PI;
     }
 
-    public Position getClosestPoint(final Entity target)
+    public int orientTowardsInDeg(final Position target)
     {
-        final double radius = target.getRadius() + Constants.MIN_DISTANCE_FOR_CLOSEST_POINT;
+        return Navigation.angleRadToDegClipped(orientTowardsInRad(target));
+    }
+
+    public Position getClosestPoint(final Entity target, final double radiusBump)
+    {
+        final double radius = target.getRadius();
         final double angleRad = target.orientTowardsInRad(this);
 
-        final double x = target.getXPos() + radius * Math.cos(angleRad);
-        final double y = target.getYPos() + radius * Math.sin(angleRad);
+        final double x = target.getXPos() + (radius + radiusBump) * Math.cos(angleRad);
+        final double y = target.getYPos() + (radius + radiusBump) * Math.sin(angleRad);
 
         return new Position(x, y);
     }

@@ -24,13 +24,13 @@ public class Planet extends Entity
         this.dockedShips = Collections.unmodifiableList(dockedShips);
     }
 
-    public int getRemainingProduction() { return remainingProduction; }
-    public int getCurrentProduction() { return currentProduction; }
     public int getDockingSpots() { return dockingSpots; }
     public int getFreeDockingSpots() { return dockingSpots - dockedShips.size(); }
     public List<Integer> getDockedShips() { return dockedShips; }
     public boolean isFull() { return dockedShips.size() == dockingSpots; }
     public boolean isOwned() { return getOwner() != -1; }
+    public int getCurrentProductionPerTurn() { return dockedShips.size() * 6; }
+    public int getTurnsToNextShip() { return (getCurrentProductionPerTurn() == 0)? Integer.MAX_VALUE : (72 - currentProduction) / getCurrentProductionPerTurn(); }
 
     @Override
     public boolean equals(Object object)

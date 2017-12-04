@@ -28,7 +28,6 @@ public class Move
     public MoveType getType() { return type; }
     public Ship getShip() { return ship; }
 
-
     @Override
     public String toString()
     {
