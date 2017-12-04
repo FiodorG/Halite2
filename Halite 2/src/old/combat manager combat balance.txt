@@ -1,0 +1,100 @@
+
+//    private static double combatBalanceManyShips(final ArrayList<Ship> myShips, final ArrayList<Ship> enemyShips)
+//    {
+//        class MutableInt
+//        {
+//            int value;
+//            public MutableInt(final int value) { this.value = value; }
+//            public void increment(int increment) { this.value += increment; }
+//            public void setValue(int newValue) { this.value = newValue; }
+//            public int getValue() { return value; }
+//
+//            @Override
+//            public String toString() { return Integer.toString(this.value); }
+//        }
+//
+//        int myId = myShips.get(0).getOwner();
+//
+//        HashMap<Integer,MutableInt> powerPerPlayer = new HashMap<>();
+//        HashMap<Integer,MutableInt> lifePerPlayer = new HashMap<>();
+//        HashMap<Integer,MutableInt> shipsPerPlayer = new HashMap<>();
+//        HashMap<Integer,Integer> survivalTimePerShip = new HashMap<>();
+//        HashMap<Integer,Integer> survivalTimePerPlayer = new HashMap<>();
+//
+//        final ArrayList<Ship> allShips = new ArrayList<>(myShips);
+//        allShips.addAll(enemyShips);
+//
+//        for(final Ship ship: allShips)
+//        {
+//            int owner = ship.getOwner();
+//            MutableInt powerCount = powerPerPlayer.get(owner);
+//            MutableInt lifeCount = lifePerPlayer.get(owner);
+//            MutableInt shipsCount = shipsPerPlayer.get(owner);
+//
+//            int shipPower = (ship.getDockingStatus() == Ship.DockingStatus.Undocked)? 64 : 0;
+//
+//            if (powerCount == null)
+//            {
+//                powerPerPlayer.put(owner, new MutableInt(shipPower));
+//                lifePerPlayer.put(owner, new MutableInt(ship.getHealth()));
+//                shipsPerPlayer.put(owner, new MutableInt(1));
+//                survivalTimePerPlayer.put(owner, 0);
+//            }
+//            else
+//            {
+//                powerCount.increment(shipPower);
+//                lifeCount.increment(ship.getHealth());
+//                shipsCount.increment(1);
+//            }
+//        }
+//
+//        int totalPower = 0;
+//        for(MutableInt power: powerPerPlayer.values())
+//            totalPower += power.getValue();
+//
+//        for(final Ship ship: allShips)
+//        {
+//            int playerId = ship.getOwner();
+//
+//            double damageTakenPerShip = (double)(totalPower - powerPerPlayer.get(playerId).getValue()) / (double)shipsPerPlayer.get(playerId).getValue();
+//            int remainingTurnsToLive = (damageTakenPerShip != 0)? (int)((double)ship.getHealth() / damageTakenPerShip) + 1 : Integer.MAX_VALUE;
+//
+//            survivalTimePerShip.put(ship.getId(), remainingTurnsToLive);
+//        }
+//
+//        for(final Ship ship: allShips)
+//        {
+//            int playerId = ship.getOwner();
+//            int remainingTurnsToLive = survivalTimePerShip.get(ship.getId());
+//
+//            if (remainingTurnsToLive > survivalTimePerPlayer.get(playerId))
+//                survivalTimePerPlayer.put(playerId, remainingTurnsToLive);
+//        }
+//
+//        int turnsOfSurvivor = findLargest(survivalTimePerPlayer.values().toArray());
+//        int combatDuration = findSecondLargest(survivalTimePerPlayer.values().toArray());
+//        int noSurvivors = (turnsOfSurvivor == combatDuration)? 1 : 0;
+//        int iWin = 0;
+//        int alliedLosses = 0;
+//        int enemyLosses = 0;
+//
+//        for(final Ship ship: allShips)
+//        {
+//            if (survivalTimePerShip.get(ship.getId()) <= combatDuration)
+//            {
+//                if (ship.getOwner() == myId)
+//                    alliedLosses++;
+//                else
+//                    enemyLosses++;
+//            }
+//            else
+//            {
+//                if (ship.getOwner() == myId)
+//                    iWin = 1;
+//                else
+//                    iWin = 0;
+//            }
+//        }
+//
+//        return (-1) * alliedLosses + enemyLosses + (-1) * noSurvivors;
+//    }
