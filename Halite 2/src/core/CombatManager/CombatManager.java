@@ -127,7 +127,7 @@ public class CombatManager
 
             allEnemyShipsInRange.clear();
             for(final Ship ship_j: allShips)
-                if ((ship_i.getOwner() != ship_j.getOwner()) && (ship_i.getDistanceTo(ship_j) <= 6.0))
+                if ((ship_i.getOwner() != ship_j.getOwner()) && (ship_i.getDistanceTo(ship_j) <= 6.00001))
                     allEnemyShipsInRange.add(ship_j);
 
             for(final Ship ship_j: allEnemyShipsInRange)

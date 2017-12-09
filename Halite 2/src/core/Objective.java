@@ -18,7 +18,8 @@ public class Objective
         RUSH,
         ANTIRUSH,
         ASSASSINATION,
-        LURE
+        LURE,
+        FLEE
     }
 
     private final Entity targetEntity;
@@ -35,7 +36,7 @@ public class Objective
     public boolean getSuperObjective() { return superObjective; }
     public int getId() { return Id; }
     public void decreaseRequiredShips(int value) { this.requiredShips -= value; }
-    public boolean isAttackObjective() { if ((this.orderType == OrderType.ATTACK) || (this.orderType == OrderType.RUSH)) return true; else return false; }
+    public boolean isAttackObjective() { if ((this.orderType == OrderType.ATTACK) || (this.orderType == OrderType.RUSH) || (this.orderType == OrderType.DEFEND)) return true; else return false; }
     public boolean isSuperObjective() { return superObjective; }
 
     public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective, final int Id)

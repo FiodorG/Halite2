@@ -70,6 +70,24 @@ public class DistanceManager
         return this.distanceMatrixShipShip.get(ship.getId()).first().getDistance();
     }
 
+    public Ship getClosestEnemyShip(final Entity entity)
+    {
+        double minDistance = Double.MAX_VALUE;
+        Ship closestShip = this.enemyShips.get(0);
+
+        for(final Ship enemyShip: this.enemyShips)
+        {
+            double distance = entity.getDistanceTo(enemyShip);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closestShip = enemyShip;
+            }
+        }
+
+        return closestShip;
+    }
+
     public ArrayList<Ship> getEnemiesCloserThan(final Entity entity, final double minDistance)
     {
         ArrayList<Ship> closeEnemyShips = new ArrayList<>();

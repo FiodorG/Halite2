@@ -1,14 +1,14 @@
 package core;
 
-import hlt.Entity;
-import hlt.GameMap;
-import hlt.Planet;
-import hlt.Ship;
+import hlt.*;
 
 import java.util.Map;
 
+import static hlt.Constants.DOCK_RADIUS;
+
 public class BehaviourManager
 {
+    private final int testArgument;
     private final double maxPriority;
     private final double distanceDiscountExponent;
 
@@ -46,10 +46,16 @@ public class BehaviourManager
     private final int assassinationTurns;
     private final int numberOfAssassinationObjectives;
 
+    // Flee
+    private final double fleePriority;
+
+    public int getTestArgument() { return testArgument; }
     public int getNumberOfAssassinationObjectives() { return numberOfAssassinationObjectives; }
 
     public BehaviourManager(final Map<String,Object> gameDefinitions)
     {
+        this.testArgument = (int) gameDefinitions.get("testArgument");
+
         this.maxPriority = (double) gameDefinitions.get("maxPriority");
         this.distanceDiscountExponent = (double) gameDefinitions.get("distanceDiscountExponent");
 
@@ -79,10 +85,16 @@ public class BehaviourManager
         this.assassinationPriority = (double) gameDefinitions.get("assassinationPriority");
         this.assassinationTurns = (int) gameDefinitions.get("assassinationTurns");
         this.numberOfAssassinationObjectives = (int) gameDefinitions.get("numberOfAssassinationObjectives");
+
+        this.fleePriority = (double) gameDefinitions.get("fleePriority");
     }
 
     public double getPlanetPriorityForColonize(final GameState gameState, final Planet targetPlanet)
     {
+        // If enemies can dock, do not consider this planet as potential colonization target.
+        if (!gameState.getDistanceManager().getEnemiesCloserThan(targetPlanet, targetPlanet.getRadius() + DOCK_RADIUS).isEmpty())
+            return 0.0;
+
         // This is just linear in the number of docking spots.
         // We rescale from 0-100 by dividing by highest priority (6-planet at 0 distance = 6), and times 100.
 
@@ -135,6 +147,19 @@ public class BehaviourManager
                 return 0.0;
             else
                 return lurePriority;
+        }
+    }
+
+    public double getCornerPriorityForFlee(final GameState gameState, final Position corner)
+    {
+        if ((gameState.getNumberOfPlayers() < 4) || (gameState.getTurn() < 20))
+            return 0.0;
+        else
+        {
+            if (gameState.getMyShips().size() < 0.1 * gameState.getEnemyShips().size())
+                return fleePriority;
+            else
+                return 0.0;
         }
     }
 
@@ -199,6 +224,16 @@ public class BehaviourManager
         // Simple way to discount far objectives
 
         return priority / Math.pow(distance, distanceDiscountExponent);
+    }
+
+    public boolean getAttackOnlyObjectives(final GameState gameState, final Ship ship)
+    {
+        if (gameState.getNumberOfPlayers() == 2 || gameState.getTurn() > 20)
+            // If past 20th turn, do not dock if enemy is less than 3 turns away
+            return gameState.getDistanceManager().getClosestEnemyShipDistance(ship) <= 7.0 * 3;
+        else
+            // Try to avoid rush it takes 5 turns to dock, 5 more to produce ships
+            return gameState.getDistanceManager().getClosestEnemyShipDistance(ship) <= 7.0 * 10;
     }
 
     public boolean isValidTurnForRush(final GameState gameState)

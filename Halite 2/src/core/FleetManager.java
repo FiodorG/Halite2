@@ -73,8 +73,8 @@ public class FleetManager
     {
         for(final Fleet fleet: this.fleets)
         {
-            HashMap<Objective, Double> objectivesAvailable = getAvailableObjectives(fleet.getCentroid(), gameState.getDistanceManager());
-            Objective objective = selectObjective(objectivesAvailable, gameState.getBehaviourManager());
+            HashMap<Objective, Double> objectivesAvailable = getAvailableObjectives(fleet.getCentroid(), gameState);
+            Objective objective = selectObjective(fleet, objectivesAvailable, gameState);
             updateObjective(objective, fleet);
         }
     }
@@ -94,7 +94,7 @@ public class FleetManager
             if (objectivesAvailable.isEmpty())
                 break;
 
-            Objective objective = selectObjective(objectivesAvailable, gameState.getBehaviourManager());
+            Objective objective = selectObjective(ship, objectivesAvailable, gameState);
             updateSuperObjective(objective, ship);
             shipsToRemove.add(ship);
             this.shipsToMove.add(ship);
@@ -108,8 +108,8 @@ public class FleetManager
     {
         for(final Ship ship: this.shipsAvailable)
         {
-            HashMap<Objective, Double> objectivesAvailable = getAvailableObjectives(ship, gameState.getDistanceManager());
-            Objective objective = selectObjective(objectivesAvailable, gameState.getBehaviourManager());
+            HashMap<Objective, Double> objectivesAvailable = getAvailableObjectives(ship, gameState);
+            Objective objective = selectObjective(ship, objectivesAvailable, gameState);
             updateObjective(objective, ship);
             this.shipsToMove.add(ship);
         }
@@ -127,6 +127,8 @@ public class FleetManager
             objective.decreaseRequiredShips(((Fleet)entity).getShips().size());
             ((Fleet)entity).addObjective(objective);
         }
+        else
+            throw new IllegalStateException("Can't update objective with unknown entity.");
 
         if (objective.getRequiredShips() <= 0)
         {
@@ -145,10 +147,10 @@ public class FleetManager
             superObjectives.remove(objective);
     }
 
-    private HashMap<Objective, Double> getAvailableObjectives(final Entity entity, final DistanceManager distanceManager)
+    private HashMap<Objective, Double> getAvailableObjectives(final Entity entity, final GameState gameState)
     {
         ArrayList<Objective> filteredFilledObjectives = filterAttackObjectives(this.filledObjectives);
-        ArrayList<Objective> filteredUnfilledObjectives = filterObjectives(this.unfilledObjectives, entity, distanceManager);
+        ArrayList<Objective> filteredUnfilledObjectives = filterObjectives(this.unfilledObjectives, entity, gameState);
 
         if (filteredUnfilledObjectives.isEmpty())
             return DistanceManager.getClosestObjectiveFromEntity(filteredFilledObjectives, entity, numberOfClosestObjectives);
@@ -156,7 +158,7 @@ public class FleetManager
             return DistanceManager.getClosestObjectiveFromEntity(filteredUnfilledObjectives, entity, numberOfClosestObjectives);
     }
 
-    private Objective selectObjective(final HashMap<Objective, Double> closestObjectivesPriorities, final BehaviourManager behaviourManager)
+    private Objective selectObjective(final Entity entity, final HashMap<Objective, Double> closestObjectivesPriorities, final GameState gameState)
     {
         Objective chosenObjective = null;
         double bestScore = -Double.MAX_VALUE;
@@ -166,7 +168,7 @@ public class FleetManager
             Objective objective = entry.getKey();
             Double distance = entry.getValue();
 
-            double score = behaviourManager.combinePriorityWithDistance(objective.getPriority(), distance);
+            double score = gameState.getBehaviourManager().combinePriorityWithDistance(objective.getPriority(), distance);
             if (score > bestScore)
             {
                 bestScore = score;
@@ -177,11 +179,11 @@ public class FleetManager
         return chosenObjective;
     }
 
-    private ArrayList<Objective> filterObjectives(final ArrayList<Objective> objectives, final Entity entity, final DistanceManager distanceManager)
+    private ArrayList<Objective> filterObjectives(final ArrayList<Objective> objectives, final Entity entity, final GameState gameState)
     {
         if (!(entity instanceof Ship))
             return filterAttackObjectives(objectives);
-        else if (distanceManager.getClosestEnemyShipDistance((Ship) entity) <= 21)
+        else if (gameState.getBehaviourManager().getAttackOnlyObjectives(gameState, (Ship) entity))
             return filterAttackObjectives(objectives);
         else
             return objectives;
@@ -194,7 +196,7 @@ public class FleetManager
         ArrayList<Objective> newObjectives = new ArrayList<>();
         for(final Objective objective: objectives)
         {
-            if (objective.getOrderType() == Objective.OrderType.ATTACK)
+            if (objective.isAttackObjective())
                 newObjectives.add(objective);
         }
         return newObjectives;

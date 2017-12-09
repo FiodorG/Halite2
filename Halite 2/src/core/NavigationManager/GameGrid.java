@@ -83,8 +83,10 @@ public class GameGrid
             GridCell firstStep = shortestPath.get(2).getGridCell();
             return new Entity(-1, -1, firstStep.getRow() * gridUnit + gridUnit / 2, firstStep.getCol() * gridUnit + gridUnit / 2, 0, 0);
         }
-        if (shortestPath.size() == 1)
+        else if (shortestPath.size() == 1)
             return new Entity(-1, -1, endGridCell.getRow() * gridUnit + gridUnit / 2, endGridCell.getCol() * gridUnit + gridUnit / 2, 0, 0);
+        else if (shortestPath.size() == 0)
+            return entity;
 
         GridCell firstStep = shortestPath.get(1).getGridCell();
 

@@ -7,4 +7,7 @@ public class Config
 
     /* Each ship selects this number of close objectives */
     public static final int numberOfClosestObjectives = 5;
+
+    /* Ids of corner entities */
+    public static final int cornerIds = -4;
 }

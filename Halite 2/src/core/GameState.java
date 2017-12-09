@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import static core.Config.cornerIds;
 import static hlt.Ship.DockingStatus.Undocked;
 
 public class GameState
@@ -41,6 +42,7 @@ public class GameState
     HashMap<Integer, Integer> numberOfShipsByPlayer;
     HashMap<Integer, Position> startingPointByPlayers;
     Position centerOfMap;
+    ArrayList<Entity> corners;
     GameGrid gameGrid;
 
     public HashMap<Integer, Position> getStartingPointByPlayers() { return startingPointByPlayers; }
@@ -65,6 +67,7 @@ public class GameState
     public Position getCenterOfMap() { return centerOfMap; }
     public int getMapSizeX() { return mapSizeX; }
     public int getMapSizeY() { return mapSizeY; }
+    public ArrayList<Entity> getCorners() { return corners; }
     public GameGrid getGameGrid() { return gameGrid; }
 
     public GameState(final CombatManager combatManager,
@@ -88,6 +91,7 @@ public class GameState
         this.mapSizeX = 0;
         this.mapSizeY = 0;
         this.centerOfMap = null;
+        this.corners = new ArrayList<>();
         this.numberOfPlayers = 0;
 
         this.myShips = new ArrayList<>();
@@ -152,6 +156,10 @@ public class GameState
             for(final Player player: gameMap.getAllPlayers())
                 this.startingPointByPlayers.put(player.getId(), DistanceManager.computeStartingPoint(player.getShips().values()));
             this.centerOfMap = new Position(this.mapSizeX / 2, this.mapSizeY / 2);
+            this.corners.add(new Entity(-1, cornerIds - 1, 0, 0, 0, 0));
+            this.corners.add(new Entity(-1, cornerIds - 2, 0, mapSizeY, 0, 0));
+            this.corners.add(new Entity(-1, cornerIds - 3, mapSizeX, 0, 0, 0));
+            this.corners.add(new Entity(-1, cornerIds - 4, mapSizeX, mapSizeY, 0, 0));
         }
 
         this.gameGrid = new GameGrid(this);

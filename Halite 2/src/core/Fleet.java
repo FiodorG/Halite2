@@ -68,27 +68,7 @@ public class Fleet extends Entity
 
     public void computeCentroid()
     {
-        double sumWeight = 0;
-        double meanX = 0;
-        double meanY = 0;
-
-        for(final Ship ship: this.ships)
-        {
-            meanX += ship.getXPos() * ship.getHealth();
-            meanY += ship.getYPos() * ship.getHealth();
-            sumWeight += ship.getHealth();
-        }
-
-        meanX /= sumWeight;
-        meanY /= sumWeight;
-
-        this.centroid = new Entity(this.ships.get(0).getOwner(), 0, meanX, meanY, 0, 0);
-    }
-
-    @Override
-    public double getRadius()
-    {
-        Entity centroid = getCentroid();
+        Entity centroid = computeCentroidInternal(this.ships);
 
         double radius = 0;
         for(final Ship ship: this.ships)
@@ -98,7 +78,28 @@ public class Fleet extends Entity
                 radius = shipRadius;
         }
 
-        return radius;
+        centroid.setRadius(radius);
+        this.centroid = centroid;
+        this.setRadius(radius);
+    }
+
+    public static Entity computeCentroidInternal(final ArrayList<Ship> ships)
+    {
+        double sumWeight = 0;
+        double meanX = 0;
+        double meanY = 0;
+
+        for(final Ship ship: ships)
+        {
+            meanX += ship.getXPos() * ship.getHealth();
+            meanY += ship.getYPos() * ship.getHealth();
+            sumWeight += ship.getHealth();
+        }
+
+        meanX /= sumWeight;
+        meanY /= sumWeight;
+
+        return new Entity(ships.get(0).getOwner(), 0, meanX, meanY, 0, 0);
     }
 
     @Override

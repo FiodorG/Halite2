@@ -52,6 +52,9 @@ public class NavigationManager
                 case RUSH: case ANTIRUSH: case ATTACK:
                     newMoves = moveFleetToObjectiveAttack(gameState, fleet, target);
                     break;
+                case DEFEND:
+                    newMoves = moveFleetToObjectiveDefend(gameState, fleet, target);
+                    break;
                 default:
                     throw new IllegalStateException("Unknown orderType for Fleet issued.");
             }
@@ -70,16 +73,25 @@ public class NavigationManager
         ArrayList<Move> newMoves = Navigation.navigateFleetToAttack(gameState, fleet, target);
         double newMovesScore = CombatManager.scoreFleetMove(fleet, (Ship) target, newMoves, gameState);
 
-        ArrayList<Move> retreatMoves = Navigation.navigateFleetToAttack(gameState, fleet, gameState.getDistanceManager().getClosestAllyShipFromFleet(fleet));
+        ArrayList<Move> retreatTowardsAllyMoves = Navigation.navigateFleetToAttack(gameState, fleet, gameState.getDistanceManager().getClosestAllyShipFromFleet(fleet));
+        double retreatTowardsAllyMovesScore = CombatManager.scoreFleetMove(fleet, (Ship) target, retreatTowardsAllyMoves, gameState);
+
+        ArrayList<Move> retreatMoves = Navigation.navigateFleetToAttack(gameState, fleet, retreatDirection(gameState, fleet.getCentroid()));
         double retreatMovesScore = CombatManager.scoreFleetMove(fleet, (Ship) target, retreatMoves, gameState);
 
-        if (newMovesScore < retreatMovesScore)
-        {
-            fleet.setUnderAttackMode();
-            return retreatMoves;
-        }
-        else
-            return newMoves;
+        double[] scores = new double[]{newMovesScore, retreatTowardsAllyMovesScore, retreatMovesScore};
+        ArrayList<ArrayList<Move>> possibleMoves = new ArrayList<>();
+        possibleMoves.add(newMoves);
+        possibleMoves.add(retreatTowardsAllyMoves);
+        possibleMoves.add(retreatMoves);
+
+        int indexOfBestMove = getIndexOfLargest(scores);
+        return possibleMoves.get(indexOfBestMove);
+    }
+
+    private ArrayList<Move> moveFleetToObjectiveDefend(final GameState gameState, final Fleet fleet, final Entity target)
+    {
+        return(Navigation.navigateFleetToDefend(gameState, fleet, target));
     }
 
     private ArrayList<Move> moveFleetToObjectiveGroup(final GameState gameState, final Fleet fleet)
@@ -119,6 +131,9 @@ public class NavigationManager
                     break;
                 case LURE:
                     newMove = moveShipToObjectiveLure(gameState, ship, target);
+                    break;
+                case FLEE:
+                    newMove = moveShipToObjectiveFlee(gameState, ship, target);
                     break;
                 default:
                     throw new IllegalStateException("Unknown orderType for ship issued.");
@@ -182,20 +197,23 @@ public class NavigationManager
         return largest;
     }
 
-    private Entity retreatDirection(final GameState gameState, final Ship sourceShip)
+    private Entity retreatDirection(final GameState gameState, final Entity sourceEntity)
     {
-        ArrayList<Ship> closeShips = gameState.getDistanceManager().getEnemiesCloserThan(sourceShip, 14.0);
+        ArrayList<Ship> closeShips = gameState.getDistanceManager().getEnemiesCloserThan(sourceEntity, 14.0);
 
         if (closeShips.isEmpty())
-            return sourceShip;
+            return sourceEntity;
 
         double sumCos = 0;
         double sumSin = 0;
         for(final Ship ship: closeShips)
         {
-            double targetAngle = sourceShip.orientTowardsInRad(ship);
-            sumCos += Math.cos(targetAngle);
-            sumSin += Math.sin(targetAngle);
+            if (ship.isUndocked())
+            {
+                double targetAngle = sourceEntity.orientTowardsInRad(ship);
+                sumCos += Math.cos(targetAngle);
+                sumSin += Math.sin(targetAngle);
+            }
         }
 
         double averageAngle = Math.atan2(sumSin, sumCos);
@@ -210,17 +228,34 @@ public class NavigationManager
 
         final double newTargetDx = Math.cos(averageAngle) * 21.0;
         final double newTargetDy = Math.sin(averageAngle) * 21.0;
-        return new Entity(-1, 0, sourceShip.getXPos() + newTargetDx, sourceShip.getYPos() + newTargetDy, 0, 0);
+        return new Entity(-1, 0, sourceEntity.getXPos() + newTargetDx, sourceEntity.getYPos() + newTargetDy, 0, 0);
     }
 
     private Move moveShipToObjectiveAssassination(final GameState gameState, final Ship ship, final Entity target)
     {
         if (ship.getDistanceTo(target) > 21.0)
+        {
             return Navigation.navigateShipToMove(gameState, ship, gameState.getGameGrid().computeShortestPath(ship, target));
+        }
         else
         {
             Planet planet = (Planet)target;
-            return Navigation.navigateShipToAttack(gameState, ship, gameState.getGameMap().getShip(planet.getOwner(), planet.getDockedShips().get(0)));
+
+            Ship closestShip = gameState.getGameMap().getShip(planet.getOwner(), planet.getDockedShips().get(0));
+            double closestShipDistance = ship.getDistanceTo(closestShip);
+
+            for (final int shipid: planet.getDockedShips())
+            {
+                Ship shipIterator = gameState.getGameMap().getShip(planet.getOwner(), shipid);
+                double distance = ship.getDistanceTo(shipIterator);
+                if (distance < closestShipDistance)
+                {
+                    closestShip = shipIterator;
+                    closestShipDistance = distance;
+                }
+            }
+
+            return Navigation.navigateShipToAttack(gameState, ship, closestShip);
         }
     }
 
@@ -230,6 +265,11 @@ public class NavigationManager
             return Navigation.navigateShipToMove(gameState, ship, gameState.getGameGrid().computeShortestPath(ship, target));
         else
             return Navigation.navigateShipToAttack(gameState, ship, target);
+    }
+
+    private Move moveShipToObjectiveFlee(final GameState gameState, final Ship ship, final Entity target)
+    {
+        return Navigation.navigateShipToMove(gameState, ship, gameState.getGameGrid().computeShortestPath(ship, target));
     }
 
     private Move moveShipToObjectiveCrashInto(final GameState gameState, final Ship ship, final Entity target)
@@ -297,20 +337,15 @@ public class NavigationManager
 
     private void resolveMoves(final GameState gameState)
     {
-//        for(int i = 0; i < this.moves.size(); i++)
-//        {
-//            if (!(this.moves.get(i) instanceof ThrustMove))
-//                continue;
-//
-//            ThrustMove move = (ThrustMove)this.moves.get(i);
-//            Ship ship = move.getShip();
-//            Position targetPos = applyMoveToShip(ship, move);
-//            ArrayList<Entity> entityList = gameState.objectsBetween(ship, targetPos, ship.getRadius() + 0.1);
-//
-//            if (!entityList.isEmpty())
-//                this.moves.set(i, navigateShipTowardsTarget(gameState, ship, targetPos, move.getThrust(), true, 90, ship.getRadius() * 2 + 1.0, Math.PI/45.0, move.getPriorityMove()));
-//        }
+        // Call function below twice, sometimes when moves
+        // are changed, it impacts moves that are checked afterwards.
 
+        resolveMovesInternal(gameState);
+        resolveMovesInternal(gameState);
+    }
+
+    private void resolveMovesInternal(final GameState gameState)
+    {
         for(int i = 0; i < this.moves.size(); i++)
         {
             Move move1 = this.moves.get(i);

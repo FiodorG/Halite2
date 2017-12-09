@@ -27,7 +27,7 @@ public class ObjectiveManager
         DistanceManager distanceManager = gameState.getDistanceManager();
         BehaviourManager behaviourManager = gameState.getBehaviourManager();
 
-        //getRushObjectives(gameMap, distanceManager, behaviourManager);
+        //getRushObjectives(gameState, distanceManager, behaviourManager);
         getAntiRushObjectives(gameState, distanceManager, behaviourManager);
         getColonizeObjectives(gameState, distanceManager, behaviourManager);
         getAttackObjectives(gameState, distanceManager, behaviourManager);
@@ -35,6 +35,7 @@ public class ObjectiveManager
 
         getAssassinationObjectives(gameState, distanceManager, behaviourManager);
         getLureObjectives(gameState, distanceManager, behaviourManager);
+        getFleeObjectives(gameState, distanceManager, behaviourManager);
 
         removeZeroPriorityObjectives();
         sortObjectives(this.objectives);
@@ -261,6 +262,24 @@ public class ObjectiveManager
             );
             this.superObjectives.add(objective);
             return;
+        }
+    }
+
+    private void getFleeObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    {
+        Objective objective;
+
+        for (final Entity corner: gameState.getCorners())
+        {
+            objective = new Objective(
+                    corner,
+                    behaviourManager.getCornerPriorityForFlee(gameState, corner),
+                    10,
+                    Objective.OrderType.FLEE,
+                    true,
+                    this.objectiveId++
+            );
+            this.superObjectives.add(objective);
         }
     }
 
