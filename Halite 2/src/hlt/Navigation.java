@@ -15,66 +15,133 @@ public class Navigation
 {
     public static ThrustMove navigateShipToMove(final GameState gameState, final Ship ship, final Entity moveTarget)
     {
-        final int maxCorrections = 90;
+        final int maxCorrections = 92;
         final boolean avoidObstacles = true;
         final double angularStepRad = Math.PI/45.0;
-        final double minimumDistance = moveTarget.getRadius() + ship.getRadius() + 1.0;
+        final double minimumDistance = ship.getRadius() + 1.0;
         final double priorityMove = 2.0;
         final int maxThrust = Constants.MAX_SPEED;
+        final Position movePosition = ship.getClosestPoint(moveTarget, 0.0);
 
-        return navigateShipTowardsTarget(gameState, ship, moveTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
+        return navigateShipTowardsTarget(gameState, ship, moveTarget, movePosition, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
 //        return navigateTowardsTangent(gameState, ship, moveTarget, moveTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, priorityMove, false);
     }
 
     public static ThrustMove navigateShipToDock(final GameState gameState, final Ship ship, final Entity dockTarget)
     {
-        final int maxCorrections = 90;
+        final int maxCorrections = 92;
         final boolean avoidObstacles = true;
         final double angularStepRad = Math.PI/45.0;
-        final double minimumDistance = dockTarget.getRadius() + ship.getRadius() + 1.0;
+        final double minimumDistance = ship.getRadius() + 1.0;
         final double priorityMove = 1.0;
         final int maxThrust = Constants.MAX_SPEED;
+        final Position movePosition = ship.getClosestPoint(dockTarget, 0.0);
 
-        return navigateShipTowardsTarget(gameState, ship, dockTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
+        return navigateShipTowardsTarget(gameState, ship, dockTarget, movePosition, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
 //        return navigateTowardsTangent(gameState, ship, dockTarget, dockTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, priorityMove, false);
     }
 
     public static ThrustMove navigateShipToCrashInto(final GameState gameState, final Ship ship, final Entity crashTarget)
     {
-        final int maxCorrections = 90;
-        final boolean avoidObstacles = true;
-        final double angularStepRad = Math.PI/45.0;
-        final double minimumDistance = 0;
-        final double priorityMove = 3.0;
-        final int maxThrust = Constants.MAX_SPEED;
- 
-        return navigateShipTowardsTarget(gameState, ship, crashTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
+        throw new IllegalStateException("Not supposed to be here");
+//
+//        final int maxCorrections = 92;
+//        final boolean avoidObstacles = true;
+//        final double angularStepRad = Math.PI/45.0;
+//        final double minimumDistance = 0;
+//        final double priorityMove = 3.0;
+//        final int maxThrust = Constants.MAX_SPEED;
+//
+//        return navigateShipTowardsTarget(gameState, ship, crashTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
     }
  
     public static ThrustMove navigateShipToAttack(final GameState gameState, final Ship ship, final Entity attackTarget)
     {
-        final int maxCorrections = 90;
+        final int maxCorrections = 92;
         final boolean avoidObstacles = true;
         final double angularStepRad = Math.PI/45.0;
-        final double minimumDistance = attackTarget.getRadius() + ship.getRadius() + 1.0;
+        final double minimumDistance = ship.getRadius() + 1.0;
         final double priorityMove = 4.0;
         final int maxThrust = Constants.MAX_SPEED;
+        final Position movePosition = ship.getClosestPoint(attackTarget, 0.0);
  
-        return navigateShipTowardsTarget(gameState, ship, attackTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
+        return navigateShipTowardsTarget(gameState, ship, attackTarget, movePosition, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
 //        return navigateTowardsTangent(gameState, ship, attackTarget, attackTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, priorityMove, false);
     }
 
-	public static ArrayList<Move> navigateFleetToAttack(final GameState gameState, final Fleet fleet, final Entity attackTarget)
+    public static ThrustMove navigateShipTowardsTarget(
+            final GameState gameState,
+            final Ship ship,
+            final Entity targetEntity,
+            final Position targetPosition,
+            final int maxThrust,
+            final boolean avoidObstacles,
+            final int maxCorrections,
+            final double minimumDistance,
+            final double angularStepRad,
+            final double priorityMove
+    )
+    {
+        if (maxCorrections <= 0)
+            return new ThrustMove(ship, 0, 0, priorityMove);
+
+        // No need to look at objects too far away
+        Position newTargetPosition = targetPosition;
+        if (ship.getDistanceTo(newTargetPosition) > 14.0)
+            newTargetPosition = newTargetPosition.getClosestPoint(ship, 14.0);
+
+        final double distance = ship.getDistanceTo(newTargetPosition);
+        final double angleRad = ship.orientTowardsInRad(newTargetPosition);
+
+        final ArrayList<Entity> entities = gameState.objectsBetween(ship, newTargetPosition, ship.getRadius() + 0.1);
+
+        if ((targetEntity instanceof Ship) || (targetEntity instanceof Planet))
+            entities.remove(targetEntity);
+
+        if (avoidObstacles && !entities.isEmpty())
+        {
+            final double newTargetDx = Math.cos(angleRad + angularStepRad) * distance;
+            final double newTargetDy = Math.sin(angleRad + angularStepRad) * distance;
+            final Position newTarget = new Position(ship.getXPos() + newTargetDx, ship.getYPos() + newTargetDy);
+
+            double newAngularStepRad = -angularStepRad + ((angularStepRad < 0)? +1 : -1) * Math.PI/45.0;
+            return navigateShipTowardsTarget(gameState, ship, targetEntity, newTarget, maxThrust, true, maxCorrections - 1, minimumDistance, newAngularStepRad, priorityMove);
+        }
+
+        final int thrust = (distance - minimumDistance < maxThrust)? (int)(Math.max(distance - minimumDistance, 0.0)) : maxThrust;
+
+        return new ThrustMove(ship, angleRadToDegClipped(angleRad), thrust, priorityMove);
+    }
+
+    /******************************************************************************************************************/
+    /******************************************************************************************************************/
+    /******************************************************************************************************************/
+
+    public static ArrayList<Move> navigateFleetToAttack(final GameState gameState, final Fleet fleet, final Entity attackTarget)
 	{
-		final int maxCorrections = 90;
+		final int maxCorrections = 92;
 		final boolean avoidObstacles = true;
 		final double angularStepRad = Math.PI/45.0;
-		final double minimumDistance = attackTarget.getRadius() + fleet.getRadius() + 1.0;
+        final double minimumDistance = fleet.getRadius() + 1.0;
         final double priorityMove = 5.0;
         final int maxThrust = Constants.MAX_SPEED;
+        final Position movePosition = fleet.getCentroid().getClosestPoint(attackTarget, 0.0);
 
-		return navigateFleetTowardsTarget(gameState, fleet, attackTarget, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
+		return navigateFleetTowardsTarget(gameState, fleet, movePosition, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
 	}
+
+    public static ArrayList<Move> navigateFleetToDefend(final GameState gameState, final Fleet fleet, final Entity defendTarget)
+    {
+        final int maxCorrections = 92;
+        final boolean avoidObstacles = true;
+        final double angularStepRad = Math.PI/45.0;
+        final double minimumDistance = fleet.getRadius() + 1.0;
+        final double priorityMove = 4.5;
+        final int maxThrust = Constants.MAX_SPEED;
+        final Position movePosition = fleet.getCentroid().getClosestPoint(defendTarget, 0.0);
+
+        return navigateFleetTowardsTarget(gameState, fleet, movePosition, maxThrust, avoidObstacles, maxCorrections, minimumDistance, angularStepRad, priorityMove);
+    }
 
     public static ArrayList<Move> navigateFleetToGroup(final GameState gameState, final Fleet fleet)
     {
@@ -121,55 +188,10 @@ public class Navigation
         return moves;
     }
 
-    public static ThrustMove navigateShipTowardsTarget(
-            final GameState gameState,
-            final Ship ship,
-            final Position targetPos,
-            final int maxThrust,
-            final boolean avoidObstacles,
-            final int maxCorrections,
-            final double minimumDistance,
-            final double angularStepRad,
-            final double priorityMove
-    )
-    {
-        if (maxCorrections <= 0)
-            return new ThrustMove(ship, 0, 0, priorityMove);
-
-        final double distance = ship.getDistanceTo(targetPos);
-        final double angleRad = ship.orientTowardsInRad(targetPos);
-
-        if (avoidObstacles && !gameState.objectsBetween(ship, targetPos, ship.getRadius() + 0.1).isEmpty())
-        {
-            final double newTargetDx = Math.cos(angleRad + angularStepRad) * distance;
-            final double newTargetDy = Math.sin(angleRad + angularStepRad) * distance;
-            final Position newTarget = new Position(ship.getXPos() + newTargetDx, ship.getYPos() + newTargetDy);
-
-            double newAngularStepRad = -angularStepRad + ((angularStepRad < 0)? +1 : -1) * Math.PI/45.0;
-
-            return navigateShipTowardsTarget(gameState, ship, newTarget, maxThrust, true, maxCorrections - 1, minimumDistance, newAngularStepRad, priorityMove);
-        }
-
-        final int thrust;
-        if (distance - minimumDistance < maxThrust)
-        {
-            // Do not round up, since overshooting might cause collision.
-            thrust = (int) (Math.max(distance - minimumDistance, 0.0));
-        }
-        else
-        {
-            thrust = maxThrust;
-        }
-
-        final int angleDeg = angleRadToDegClipped(angleRad);
-
-        return new ThrustMove(ship, angleDeg, thrust, priorityMove);
-    }
-
 	public static ArrayList<Move> navigateFleetTowardsTarget(
 			final GameState gameState,
 			final Fleet fleet,
-			final Position targetPos,
+			final Position targetPosition,
 			final int maxThrust,
 			final boolean avoidObstacles,
 			final int maxCorrections,
@@ -181,12 +203,26 @@ public class Navigation
 		Entity fleetCentroid = fleet.getCentroid();
 
 		if (maxCorrections <= 0)
-			return createThrustMovesForFleet(fleet, 0, 0, priorityMove);
+        {
+            if (fleet.getShips().size() == 2)
+                return navigateFleetToGroup(gameState, fleet);
+            else
+                return createThrustMovesForFleet(gameState, fleet, 0, 0, 0);
+        }
 
-		final double distance = fleetCentroid.getDistanceTo(targetPos);
-		final double angleRad = fleetCentroid.orientTowardsInRad(targetPos);
+        Position newTargetPosition = targetPosition;
 
-		ArrayList<Entity> objectsBetween = gameState.objectsBetween(fleetCentroid, targetPos, fleet.getRadius() + 0.01);
+		// Somehow this makes fleets get stuck in narrow paths between planets
+        if (gameState.getBehaviourManager().getTestArgument() == 1)
+        {
+            if (fleetCentroid.getDistanceTo(newTargetPosition) > 21.0)
+                newTargetPosition = newTargetPosition.getClosestPoint(fleetCentroid, 21.0);
+        }
+
+		final double distance = fleetCentroid.getDistanceTo(newTargetPosition);
+		final double angleRad = fleetCentroid.orientTowardsInRad(newTargetPosition);
+
+		ArrayList<Entity> objectsBetween = gameState.objectsBetween(fleetCentroid, newTargetPosition, fleet.getRadius() + 0.01);
 		objectsBetween.removeAll(fleet.getShips());
 
 		if (avoidObstacles && !objectsBetween.isEmpty())
@@ -194,32 +230,64 @@ public class Navigation
 			final double newTargetDx = Math.cos(angleRad + angularStepRad) * distance;
 			final double newTargetDy = Math.sin(angleRad + angularStepRad) * distance;
 			final Position newTarget = new Position(fleetCentroid.getXPos() + newTargetDx, fleetCentroid.getYPos() + newTargetDy);
+            double newAngularStepRad = -angularStepRad + ((angularStepRad < 0)? +1 : -1) * Math.PI/45.0;
 
-			return navigateFleetTowardsTarget(gameState, fleet, newTarget, maxThrust, true, (maxCorrections - 1), minimumDistance, angularStepRad, priorityMove);
+			return navigateFleetTowardsTarget(gameState, fleet, newTarget, maxThrust, true, (maxCorrections - 1), minimumDistance, newAngularStepRad, priorityMove);
 		}
 
-		final int thrust;
-		if (distance - minimumDistance < maxThrust)
-		{
-			// Do not round up, since overshooting might cause collision.
-			thrust = (int) (Math.max(distance - minimumDistance, 0.0));
-		}
-		else
-		{
-			thrust = maxThrust;
-		}
+		final int thrust = (distance - minimumDistance < maxThrust)? (int)(Math.max(distance - minimumDistance, 0.0)) : maxThrust;
 
-		return createThrustMovesForFleet(fleet, angleRadToDegClipped(angleRad), thrust, priorityMove);
+		return createThrustMovesForFleet(gameState, fleet, angleRadToDegClipped(angleRad), thrust, priorityMove);
 	}
 
-	private static ArrayList<Move> createThrustMovesForFleet(final Fleet fleet, final int angleDeg, final int thrust, final double priorityMove)
+	private static ArrayList<Move> createThrustMovesForFleet(final GameState gameState, final Fleet fleet, final int angleDeg, final int thrust, final double priorityMove)
 	{
 		ArrayList<Move> moves = new ArrayList<>();
 		for (final Ship ship: fleet.getShips())
 			moves.add(new ThrustMove(ship, angleDeg, thrust, priorityMove));
 
-		return moves;
+        return mutateMovesToRegroup(fleet, moves);
 	}
+
+	private static ArrayList<Move> mutateMovesToRegroup(final Fleet fleet, final ArrayList<Move> moves)
+    {
+        Entity centroidBeforeMove = fleet.getCentroid();
+        Entity centroidAfterMove = new Entity(
+                centroidBeforeMove.getOwner(),
+                centroidBeforeMove.getId(),
+                centroidBeforeMove.getXPos() + ((ThrustMove)moves.get(0)).dX(),
+                centroidBeforeMove.getYPos() + ((ThrustMove)moves.get(0)).dY(),
+                centroidBeforeMove.getHealth(),
+                centroidBeforeMove.getRadius()
+        );
+
+        for (int i = 0; i < moves.size(); ++i)
+        {
+            Move moveToMutate = moves.get(i);
+            Ship shipToMutate = moveToMutate.getShip();
+            int angleToCentroid = shipToMutate.orientTowardsInDeg(centroidAfterMove);
+
+            Move moveToCentroid = new ThrustMove(shipToMutate, angleToCentroid, ((ThrustMove)moveToMutate).getThrust(), ((ThrustMove)moveToMutate).getPriorityMove());
+
+            boolean canMoveToCentroid = true;
+            for (final Move move: moves)
+            {
+                if (move.equals(moveToMutate))
+                    continue;
+
+                if(Collision.willCollideIterative((ThrustMove)moveToCentroid, (ThrustMove)move))
+                {
+                    canMoveToCentroid = false;
+                    break;
+                }
+            }
+
+            if (canMoveToCentroid)
+                moves.set(i, moveToCentroid);
+        }
+
+        return moves;
+    }
 
     public static int angleRadToDegClipped(final double angleRad)
     {
@@ -228,109 +296,109 @@ public class Navigation
         return (int) (((degUnclipped % 360L) + 360L) % 360L);
     }
 
-    public static ThrustMove navigateTowardsTangent(
-        final GameState gameState,
-		final Ship ship,
-		final Position targetPos,
-        final Position initialTarget,
-		final int maxThrust,
-		final boolean avoidObstacles,
-		final int maxCorrections,
-		final double minimumDistance,
-        final double priorityMove,
-		final boolean isFinalDestination
-	)
-	{
-    	// Still iterative, but not in fixed step sizes computes the step size based on the objects
-    	final double distance = ship.getDistanceTo(targetPos);
-
-    	if ((maxCorrections <= 0) || (distance < 1.2))
-    	{
-    		//fall back to old navigation
-    		final int maxCorrectionsFallback = 90;
-            final double angularStepRad = Math.PI/45.0;
-
-            return navigateShipTowardsTarget(gameState, ship, initialTarget, maxThrust, avoidObstacles, maxCorrectionsFallback, minimumDistance, angularStepRad, priorityMove);
-        }
-
-        final double angleRad = ship.orientTowardsInRad(targetPos);
-        ArrayList<Entity> entityList = gameState.objectsBetween(ship, targetPos, ship.getRadius() + 0.1);
-
-        Position newTarget;
-        if (avoidObstacles && !entityList.isEmpty())
-        {
-			Entity entity = getClosestEntity(entityList, ship);
-        	ArrayList<Position> tangents = findTangentPointsToTarget(ship, entity);
-
-        	Position tangent1 = tangents.get(0);
-        	Position tangent2 = tangents.get(1);
-
-			newTarget = (tangent1.getDistanceTo(targetPos) < tangent2.getDistanceTo(targetPos))? tangent1 : tangent2;
-			boolean isFinalDestinationIteration = ((Position)entity).equals(targetPos);
-
-        	return navigateTowardsTangent(gameState, ship, newTarget, initialTarget, maxThrust, avoidObstacles,maxCorrections - 1, Constants.SHIP_RADIUS + 0.1, priorityMove, isFinalDestinationIteration);
-        }
-
-        int thrust;
-        if (distance - minimumDistance < maxThrust)
-        {
-            thrust = (int) (Math.max(distance - minimumDistance, 0.0));
-            //dealing with scenarios where the thrust is rounded down to 0
-
-            if(thrust == 0)
-            	if(!isFinalDestination)
-            		thrust = 1;
-        }
-        else
-            thrust = maxThrust;
-
-        return new ThrustMove(ship, angleRadToDegClipped(angleRad), thrust, priorityMove);
-	}
-
-	public static ArrayList<Position> findTangentPointsToTarget(final Position point, final Entity target)
-	{
-		double circleRadius = target.getRadius()+ 1.5;
-		double distanceToCenter = target.getDistanceTo(point);
-
-		double x = point.getXPos();
-		double y = point.getYPos();
-
-		double tangentLength = Math.sqrt(distanceToCenter * distanceToCenter - circleRadius * circleRadius);
-		double angleRad = point.orientTowardsInRad(target);
-		double radialWidth = Math.atan2(circleRadius, tangentLength);
-
-		double x1 = tangentLength * Math.cos(angleRad + radialWidth);
-		double x2 = tangentLength * Math.cos(angleRad - radialWidth);
-
-		double y1 = tangentLength * Math.sin(angleRad + radialWidth);
-		double y2 = tangentLength * Math.sin(angleRad - radialWidth);
-
-		Position tangent1 = new Position(x + x1,y + y1);
-		Position tangent2 = new Position(x + x2,y + y2);
-
-		ArrayList<Position> tangents = new ArrayList<>();
-		tangents.add(tangent1);
-		tangents.add(tangent2);
-		return tangents;
-	}
-
-	public static Entity getClosestEntity(final ArrayList<Entity> entityList, final Position p)
-	{
-		double minDistance = Double.MAX_VALUE;
-		double distance;
-		Entity closestEntity = null;
-		for(final Entity entity: entityList)
-		{
-			distance = p.getDistanceTo(entity);
-			if(distance < minDistance)
-			{
-				closestEntity = entity;
-				minDistance = distance;
-			}
-		}
-
-		return closestEntity;
-	}
+//    public static ThrustMove navigateTowardsTangent(
+//        final GameState gameState,
+//		final Ship ship,
+//		final Position targetPos,
+//        final Position initialTarget,
+//		final int maxThrust,
+//		final boolean avoidObstacles,
+//		final int maxCorrections,
+//		final double minimumDistance,
+//        final double priorityMove,
+//		final boolean isFinalDestination
+//	)
+//	{
+//    	// Still iterative, but not in fixed step sizes computes the step size based on the objects
+//    	final double distance = ship.getDistanceTo(targetPos);
+//
+//    	if ((maxCorrections <= 0) || (distance < 1.2))
+//    	{
+//    		//fall back to old navigation
+//    		final int maxCorrectionsFallback = 90;
+//            final double angularStepRad = Math.PI/45.0;
+//
+//            return navigateShipTowardsTarget(gameState, ship, initialTarget, maxThrust, avoidObstacles, maxCorrectionsFallback, minimumDistance, angularStepRad, priorityMove);
+//        }
+//
+//        final double angleRad = ship.orientTowardsInRad(targetPos);
+//        ArrayList<Entity> entityList = gameState.objectsBetween(ship, targetPos, ship.getRadius() + 0.1);
+//
+//        Position newTarget;
+//        if (avoidObstacles && !entityList.isEmpty())
+//        {
+//			Entity entity = getClosestEntity(entityList, ship);
+//        	ArrayList<Position> tangents = findTangentPointsToTarget(ship, entity);
+//
+//        	Position tangent1 = tangents.get(0);
+//        	Position tangent2 = tangents.get(1);
+//
+//			newTarget = (tangent1.getDistanceTo(targetPos) < tangent2.getDistanceTo(targetPos))? tangent1 : tangent2;
+//			boolean isFinalDestinationIteration = ((Position)entity).equals(targetPos);
+//
+//        	return navigateTowardsTangent(gameState, ship, newTarget, initialTarget, maxThrust, avoidObstacles,maxCorrections - 1, Constants.SHIP_RADIUS + 0.1, priorityMove, isFinalDestinationIteration);
+//        }
+//
+//        int thrust;
+//        if (distance - minimumDistance < maxThrust)
+//        {
+//            thrust = (int) (Math.max(distance - minimumDistance, 0.0));
+//            //dealing with scenarios where the thrust is rounded down to 0
+//
+//            if(thrust == 0)
+//            	if(!isFinalDestination)
+//            		thrust = 1;
+//        }
+//        else
+//            thrust = maxThrust;
+//
+//        return new ThrustMove(ship, angleRadToDegClipped(angleRad), thrust, priorityMove);
+//	}
+//
+//	public static ArrayList<Position> findTangentPointsToTarget(final Position point, final Entity target)
+//	{
+//		double circleRadius = target.getRadius()+ 1.5;
+//		double distanceToCenter = target.getDistanceTo(point);
+//
+//		double x = point.getXPos();
+//		double y = point.getYPos();
+//
+//		double tangentLength = Math.sqrt(distanceToCenter * distanceToCenter - circleRadius * circleRadius);
+//		double angleRad = point.orientTowardsInRad(target);
+//		double radialWidth = Math.atan2(circleRadius, tangentLength);
+//
+//		double x1 = tangentLength * Math.cos(angleRad + radialWidth);
+//		double x2 = tangentLength * Math.cos(angleRad - radialWidth);
+//
+//		double y1 = tangentLength * Math.sin(angleRad + radialWidth);
+//		double y2 = tangentLength * Math.sin(angleRad - radialWidth);
+//
+//		Position tangent1 = new Position(x + x1,y + y1);
+//		Position tangent2 = new Position(x + x2,y + y2);
+//
+//		ArrayList<Position> tangents = new ArrayList<>();
+//		tangents.add(tangent1);
+//		tangents.add(tangent2);
+//		return tangents;
+//	}
+//
+//	public static Entity getClosestEntity(final ArrayList<Entity> entityList, final Position p)
+//	{
+//		double minDistance = Double.MAX_VALUE;
+//		double distance;
+//		Entity closestEntity = null;
+//		for(final Entity entity: entityList)
+//		{
+//			distance = p.getDistanceTo(entity);
+//			if(distance < minDistance)
+//			{
+//				closestEntity = entity;
+//				minDistance = distance;
+//			}
+//		}
+//
+//		return closestEntity;
+//	}
 
 //    public static ArrayList<ThrustMove> navigateFleetSizeTwoTowards(
 //    		final GameMap gameMap,

@@ -5,7 +5,7 @@ public class Entity extends Position
     private final int owner;
     private final int id;
     private final int health;
-    private final double radius;
+    private double radius;
 
     public Entity(final int owner, final int id, final double xPos, final double yPos, final int health, final double radius)
     {
@@ -20,6 +20,8 @@ public class Entity extends Position
     public int getId() { return id; }
     public int getHealth() { return health; }
     public double getRadius() { return radius; }
+
+    public void setRadius(final double newRadius) { this.radius = newRadius; }
 
     @Override
     public boolean equals(Object object)

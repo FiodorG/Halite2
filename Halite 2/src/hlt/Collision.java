@@ -98,7 +98,7 @@ public class Collision
         VectorBasic v1 = new VectorBasic(m1.getShip().getXPos(), m1.getShip().getYPos());
         VectorBasic v2 = new VectorBasic(m2.getShip().getXPos(), m2.getShip().getYPos());
 
-        for (double i = 0.0; i <= 1; i += 0.1)
+        for (double i = 0.0; i <= 1; i += 0.05)
         {
             VectorBasic r1 = new VectorBasic(m1.dX() * i, m1.dY() * i);
             VectorBasic r2 = new VectorBasic(m2.dX() * i, m2.dY() * i);

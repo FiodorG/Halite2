@@ -62,8 +62,9 @@ public class ThrustMove extends Move
     {
         return "ThrustMove[" +
             super.toString() +
-            ", angleDeg=" + angleDeg +
+            ", angle=" + angleDeg +
             ", thrust=" + thrust +
+            ", pri=" + priorityMove +
             "]";
     }
 }
