@@ -48,25 +48,25 @@ public class Future
                 enemyDockedShips.add(ship);
     }
 
-    public ArrayList<Move> generateFutureMoves(final GameState gameState, final CombatOperation combatOperation)
-    {
-        final Node<Event> chosenFuture = alphaBetaPruning(gameState, this.futurePossibilities, -Double.MAX_VALUE, Double.MAX_VALUE);
-        //final Node<Event> chosenFuture = miniMax(gameState, this.futurePossibilities);
-
-        Node chosenNode = chosenFuture.getParents().getLast();
-        Event event = (Event)chosenNode.getData();
-        ArrayList<Ship> sourceShips = event.getSourceEntity();
-
-        if (sourceShips.size() == 1)
-        {
-            Move move = generateMoves(gameState, event.getEventType(), sourceShips.get(0), event.getTargetEntity());
-            ArrayList<Move> moves = new ArrayList<>();
-            moves.add(move);
-            return moves;
-        }
-        else
-            return generateMovesForFleet(gameState, event.getEventType(), (Fleet)combatOperation.getSourceShip(), event.getTargetEntity());
-    }
+//    public ArrayList<Move> generateFutureMoves(final GameState gameState, final CombatOperation combatOperation)
+//    {
+//        final Node<Event> chosenFuture = alphaBetaPruning(gameState, this.futurePossibilities, -Double.MAX_VALUE, Double.MAX_VALUE);
+//        //final Node<Event> chosenFuture = miniMax(gameState, this.futurePossibilities);
+//
+//        Node chosenNode = chosenFuture.getParents().getLast();
+//        Event event = (Event)chosenNode.getData();
+//        ArrayList<Ship> sourceShips = event.getSourceEntity();
+//
+//        if (sourceShips.size() == 1)
+//        {
+//            Move move = generateMoves(gameState, event.getEventType(), sourceShips.get(0), event.getTargetEntity());
+//            ArrayList<Move> moves = new ArrayList<>();
+//            moves.add(move);
+//            return moves;
+//        }
+//        else
+//            return generateMovesForFleet(gameState, event.getEventType(), (Fleet)combatOperation.getSourceShip(), event.getTargetEntity());
+//    }
 
     private Node miniMax(final GameState gameState, final Node parentNode)
     {

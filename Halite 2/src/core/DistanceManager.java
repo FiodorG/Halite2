@@ -65,7 +65,7 @@ public class DistanceManager
         }
     }
 
-    public double getClosestUndockedEnemyShipDistance(final Ship ship)
+    public double getClosestUndockedEnemyShipDistance(final Entity entity)
     {
         double minDistance = Double.MAX_VALUE;
 
@@ -73,7 +73,7 @@ public class DistanceManager
         {
             if (enemyShip.isUndocked())
             {
-                double distance = ship.getDistanceTo(enemyShip);
+                double distance = entity.getDistanceTo(enemyShip);
 
                 if (distance < minDistance)
                     minDistance = distance;
@@ -195,9 +195,13 @@ public class DistanceManager
 
     public static HashMap<Objective, Double> getClosestObjectiveFromEntity(final ArrayList<Objective> objectives, final Entity entity, final int numberOfClosest)
     {
+        Entity sourceEntity = entity;
+        if (entity instanceof Fleet)
+            sourceEntity = ((Fleet) entity).getCentroid();
+
         HashMap<Objective, Double> distances = new HashMap<>();
         for(int i = 0; i < objectives.size(); i++)
-            distances.put(objectives.get(i), entity.getDistanceTo(objectives.get(i).getTargetEntity()));
+            distances.put(objectives.get(i), sourceEntity.getDistanceTo(objectives.get(i).getTargetEntity()));
 
         objectives.sort((i, j) -> distances.get(i) <= distances.get(j)? -1:1);
 
@@ -205,7 +209,17 @@ public class DistanceManager
         for(int i = 0; i < numberOfClosest; i++)
         {
             if (i < objectives.size())
-                closestObjectives.put(objectives.get(i), distances.get(objectives.get(i)));
+            {
+                Objective objective = objectives.get(i);
+
+                if (entity instanceof Fleet)
+                {
+                    if (objective.isAvailableForFleets())
+                        closestObjectives.put(objective, distances.get(objective));
+                }
+                else
+                    closestObjectives.put(objective, distances.get(objective));
+            }
             else
                 break;
         }

@@ -172,6 +172,19 @@ public class BehaviourManager
         }
     }
 
+    public double getCornerPriorityForHide(final GameState gameState)
+    {
+        if (gameState.getNumberOfPlayers() > 2)
+        {
+            if (gameState.getMyShips().size() < 0.2 * gameState.getEnemyShips().size())
+                return 100.0;
+            else
+                return 0.0;
+        }
+        else
+            return 0.0;
+    }
+
     public double getShipPriorityForDefend(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
         // If enemy ship less than 2 turns away
@@ -261,7 +274,7 @@ public class BehaviourManager
                 return gameState.getDistanceManager().getClosestUndockedEnemyShipDistance(ship) <= 7.0 * 3;
             else
                 // Try to avoid rush it takes 5 turns to dock, 5 more to produce ships
-                return gameState.getDistanceManager().getClosestUndockedEnemyShipDistance(ship) <= 7.0 * 11;
+                return gameState.getDistanceManager().getClosestUndockedEnemyShipDistance(ship) <= 7.0 * 12;
         }
         else
         {
