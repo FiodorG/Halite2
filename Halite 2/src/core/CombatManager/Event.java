@@ -1,5 +1,6 @@
 package core.CombatManager;
 
+import hlt.Entity;
 import hlt.Position;
 import hlt.Ship;
 import java.util.ArrayList;
@@ -8,17 +9,17 @@ public class Event
 {
     final private EventType eventType;
     final private ArrayList<Ship> sourceShips;
-    final private Position targetPosition;
+    final private Entity targetEntity;
 
-    public Event(final EventType eventType, final ArrayList<Ship> sourceShips, final Position targetPosition)
+    public Event(final EventType eventType, final ArrayList<Ship> sourceShips, final Entity targetEntity)
     {
         this.eventType = eventType;
         this.sourceShips = sourceShips;
-        this.targetPosition = targetPosition;
+        this.targetEntity = targetEntity;
     }
 
     public ArrayList<Ship> getSourceEntity() { return sourceShips; }
-    public Position getTargetEntity() { return targetPosition; }
+    public Entity getTargetEntity() { return targetEntity; }
     public EventType getEventType() { return eventType; }
 
 
@@ -27,8 +28,8 @@ public class Event
     {
         return "Event<" +
                 "type=" + eventType +
-                ", Allies(" + sourceShips.size() + ")" +
-                ", Target(" + targetPosition.toString() + ")" +
+                ", Allies(" + sourceShips.toString() + ")" +
+                ", Target(" + targetEntity.toString() + ")" +
                 ">";
     }
 }

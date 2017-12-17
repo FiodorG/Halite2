@@ -16,12 +16,16 @@ public class Fleet extends Entity
 
     public ArrayList<Ship> getShips() { return ships; }
     public ArrayList<Objective> getObjectives() { return objectives; }
+    public Objective getFirstObjectives() { return objectives.get(0); }
     public Entity getCentroid() { return centroid; }
 
-    public int getReinforcementNeed() { return reinforcementNeed; }
-    public void decreaseReinforcementNeed() { this.reinforcementNeed--; }
+    public int getReinforcementNeed(final GameState gameState)
+    {
+        return reinforcementNeed;
+    }
 
     public void addObjective(final Objective objective) { this.objectives.add(objective); }
+    public void setObjective(final Objective objective) { this.objectives.clear(); this.objectives.add(objective); }
 
     public Fleet(final Ship ship, final Objective objective, final int id)
     {
@@ -56,14 +60,9 @@ public class Fleet extends Entity
         computeCentroid();
     }
 
-    public void setUnderAttackMode()
+    public double priorityReinforcementNeed(final GameState gameState)
     {
-        this.reinforcementNeed = 2;
-    }
-
-    public double priorityReinforcementNeed()
-    {
-        return getReinforcementNeed() * 100.0;
+        return getReinforcementNeed(gameState) * 100.0;
     }
 
     public void computeCentroid()
@@ -73,7 +72,7 @@ public class Fleet extends Entity
         double radius = 0;
         for(final Ship ship: this.ships)
         {
-            double shipRadius = ship.getDistanceTo(centroid) + ship.getRadius() + 0.1;
+            double shipRadius = ship.getDistanceTo(centroid) + ship.getRadius();
             if (shipRadius > radius)
                 radius = shipRadius;
         }

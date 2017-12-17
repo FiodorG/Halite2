@@ -91,8 +91,12 @@ public class BehaviourManager
 
     public double getPlanetPriorityForColonize(final GameState gameState, final Planet targetPlanet)
     {
+        // If I am getting smashed, do not colonize
+        if (gameState.getMyShips().size() < 0.1 * gameState.getEnemyShips().size())
+            return 0.0;
+
         // If enemies can dock, do not consider this planet as potential colonization target.
-        if (!gameState.getDistanceManager().getEnemiesCloserThan(targetPlanet, targetPlanet.getRadius() + DOCK_RADIUS).isEmpty())
+        if (!gameState.getDistanceManager().getEnemiesCloserThan(targetPlanet, targetPlanet.getRadius() + DOCK_RADIUS + 7.0).isEmpty())
             return 0.0;
 
         // This is just linear in the number of docking spots.
@@ -112,8 +116,13 @@ public class BehaviourManager
 
     public double getPlanetPriorityForReinforceColony(final GameState gameState, final Planet targetPlanet)
     {
-        // This is just linear in the number of docking spots.
-        // We rescale from 0-100 by dividing by highest priority (6-planet at 0 distance = 6), and times 100.
+        // If I am getting smashed, do not colonize
+        if (gameState.getMyShips().size() < 0.1 * gameState.getEnemyShips().size())
+            return 0.0;
+
+        // If enemies can dock, do not consider this planet as potential colonization target.
+        if (!gameState.getDistanceManager().getEnemiesCloserThan(targetPlanet, targetPlanet.getRadius() + DOCK_RADIUS + 7.0).isEmpty())
+            return 0.0;
 
         double priority = maxPriority;
 
@@ -166,8 +175,18 @@ public class BehaviourManager
     public double getShipPriorityForDefend(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
         // If enemy ship less than 2 turns away
-        if (distanceManager.getClosestEnemyShipDistance(targetShip) < 14.0)
+        if (distanceManager.getClosestUndockedEnemyShipDistance(targetShip) < 14.0)
             return defendPriority;
+        else
+            return 0.0;
+    }
+
+    public double getShipPriorityForUndock(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
+    {
+        if (gameState.isEnemyRushing(gameState))
+            return 100.0;
+        else if ((gameState.getMyShips().size() < 0.1 * gameState.getEnemyShips().size()))
+            return 100.0;
         else
             return 0.0;
     }
@@ -188,7 +207,14 @@ public class BehaviourManager
 
     public double getShipPriorityForAttack(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
-        return attackShipPriority;
+        double priority = attackShipPriority;
+
+        // Try to attack enemies closer to docked ships
+
+        if (distanceManager.getClosestDockedEnemyShipDistance(targetShip) < 14.0)
+            priority *= 2;
+
+        return priority;
     }
 
     public double getDockedShipPriorityForRush(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
@@ -228,12 +254,24 @@ public class BehaviourManager
 
     public boolean getAttackOnlyObjectives(final GameState gameState, final Ship ship)
     {
-        if (gameState.getNumberOfPlayers() == 2 || gameState.getTurn() > 20)
-            // If past 20th turn, do not dock if enemy is less than 3 turns away
-            return gameState.getDistanceManager().getClosestEnemyShipDistance(ship) <= 7.0 * 3;
+        if (gameState.getNumberOfPlayers() == 2)
+        {
+            if (gameState.getTurn() > 20)
+                // If past 20th turn, do not dock if enemy is less than 3 turns away
+                return gameState.getDistanceManager().getClosestUndockedEnemyShipDistance(ship) <= 7.0 * 3;
+            else
+                // Try to avoid rush it takes 5 turns to dock, 5 more to produce ships
+                return gameState.getDistanceManager().getClosestUndockedEnemyShipDistance(ship) <= 7.0 * 11;
+        }
         else
-            // Try to avoid rush it takes 5 turns to dock, 5 more to produce ships
-            return gameState.getDistanceManager().getClosestEnemyShipDistance(ship) <= 7.0 * 10;
+        {
+            if (gameState.getTurn() > 20)
+                // If past 20th turn, do not dock if enemy is less than 3 turns away
+                return gameState.getDistanceManager().getClosestUndockedEnemyShipDistance(ship) <= 7.0 * 3;
+            else
+                // Try to avoid rush it takes 5 turns to dock, 5 more to produce ships
+                return gameState.getDistanceManager().getClosestUndockedEnemyShipDistance(ship) <= 7.0 * 5;
+        }
     }
 
     public boolean isValidTurnForRush(final GameState gameState)
@@ -275,5 +313,10 @@ public class BehaviourManager
 
             return Math.min(shipsToSend, rushMaxShipsPerObjective);
         }
+    }
+
+    public int getRequiredShipsForAttack(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
+    {
+        return 3;
     }
 }

@@ -7,18 +7,21 @@ import java.util.*;
 public class ObjectiveManager
 {
     private ArrayList<Objective> objectives;
+    private ArrayList<Objective> undockObjectives;
     private ArrayList<Objective> superObjectives;
     private int objectiveId;
 
     public ObjectiveManager()
     {
         this.objectives = new ArrayList<>();
+        this.undockObjectives = new ArrayList<>();
         this.superObjectives = new ArrayList<>();
         this.objectiveId = 0;
     }
 
     public ArrayList<Objective> getObjectives() { return objectives; }
     public ArrayList<Objective> getSuperObjectives() { return superObjectives; }
+    public ArrayList<Objective> getUndockObjectives() { return undockObjectives; }
 
     public void getObjectives(final GameState gameState)
     {
@@ -27,11 +30,12 @@ public class ObjectiveManager
         DistanceManager distanceManager = gameState.getDistanceManager();
         BehaviourManager behaviourManager = gameState.getBehaviourManager();
 
-        //getRushObjectives(gameState, distanceManager, behaviourManager);
+        getRushObjectives(gameState, distanceManager, behaviourManager);
         getAntiRushObjectives(gameState, distanceManager, behaviourManager);
         getColonizeObjectives(gameState, distanceManager, behaviourManager);
         getAttackObjectives(gameState, distanceManager, behaviourManager);
         getDefendObjectives(gameState, distanceManager, behaviourManager);
+        getUndockObjectives(gameState, distanceManager, behaviourManager);
 
         getAssassinationObjectives(gameState, distanceManager, behaviourManager);
         getLureObjectives(gameState, distanceManager, behaviourManager);
@@ -146,12 +150,12 @@ public class ObjectiveManager
             Objective objective;
 
             // Then attack docking/undocking/docked ships in priority
-            if (ship.getDockingStatus() != Ship.DockingStatus.Undocked)
+            if (!ship.isUndocked())
                 objective = new Objective(
                     ship,
                     behaviourManager.getDockedShipPriorityForAttack(gameState, distanceManager, ship),
-                    2,
-                    Objective.OrderType.ATTACK,
+                    behaviourManager.getRequiredShipsForAttack(gameState, distanceManager, ship),
+                    Objective.OrderType.ATTACKDOCKED,
                     false,
                     this.objectiveId++
                 );
@@ -161,7 +165,7 @@ public class ObjectiveManager
                 objective = new Objective(
                     ship,
                     behaviourManager.getShipPriorityForAttack(gameState, distanceManager, ship),
-                    2,
+                    behaviourManager.getRequiredShipsForAttack(gameState, distanceManager, ship),
                     Objective.OrderType.ATTACK,
                     false,
                     this.objectiveId++
@@ -192,6 +196,29 @@ public class ObjectiveManager
                 continue;
 
             objectives.add(objective);
+        }
+    }
+
+    private void getUndockObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
+    {
+        for(final Ship ship : gameState.getMyShips())
+        {
+            Objective objective;
+
+            if (!ship.isUndocked())
+                objective = new Objective(
+                        ship,
+                        behaviourManager.getShipPriorityForUndock(gameState, distanceManager, ship),
+                        1,
+                        Objective.OrderType.UNDOCK,
+                        false,
+                        this.objectiveId++
+                );
+
+            else
+                continue;
+
+            undockObjectives.add(objective);
         }
     }
 
@@ -274,7 +301,7 @@ public class ObjectiveManager
             objective = new Objective(
                     corner,
                     behaviourManager.getCornerPriorityForFlee(gameState, corner),
-                    10,
+                    100,
                     Objective.OrderType.FLEE,
                     true,
                     this.objectiveId++
@@ -286,6 +313,7 @@ public class ObjectiveManager
     public void clearObjectives()
     {
         this.objectives.clear();
+        this.undockObjectives.clear();
         this.superObjectives.clear();
     }
     private void sortObjectives(final ArrayList<Objective> objectives)  { objectives.sort(Comparator.comparingDouble(Objective::getPriority).reversed()); }
@@ -295,24 +323,25 @@ public class ObjectiveManager
             DebugLog.addLog(objective.toString());
         for(final Objective objective: this.objectives)
             DebugLog.addLog(objective.toString());
+        for(final Objective objective: this.undockObjectives)
+            DebugLog.addLog(objective.toString());
         DebugLog.addLog("");
     }
     private void removeZeroPriorityObjectives()
     {
+        this.objectives = removeZeroPriorityObjectivesInternal(this.objectives);
+        this.superObjectives = removeZeroPriorityObjectivesInternal(this.superObjectives);
+        this.undockObjectives = removeZeroPriorityObjectivesInternal(this.undockObjectives);
+    }
+
+    private ArrayList<Objective> removeZeroPriorityObjectivesInternal(ArrayList<Objective> objectives)
+    {
         ArrayList<Objective> filteredObjectives = new ArrayList<>();
 
-        for(final Objective objective: this.objectives)
+        for(final Objective objective: objectives)
             if (objective.getPriority() != 0)
                 filteredObjectives.add(objective);
 
-        this.objectives = filteredObjectives;
-
-        ArrayList<Objective> filteredSuperObjectives = new ArrayList<>();
-
-        for(final Objective objective: this.superObjectives)
-            if (objective.getPriority() != 0)
-                filteredSuperObjectives.add(objective);
-
-        this.superObjectives = filteredSuperObjectives;
+        return filteredObjectives;
     }
 }

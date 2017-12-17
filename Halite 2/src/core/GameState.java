@@ -34,16 +34,20 @@ public class GameState
 
     private final ArrayList<Ship> myShips;
     private final ArrayList<Ship> myShipsNextTurn;
+    private final ArrayList<Ship> myShipsPreviousTurn;
     private final ArrayList<Fleet> myFleetsNextTurn;
     private final ArrayList<Ship> enemyShips;
     private final ArrayList<Planet> planets;
 
     HashMap<Integer, Integer> numberOfPlanetsByPlayer;
-    HashMap<Integer, Integer> numberOfShipsByPlayer;
-    HashMap<Integer, Position> startingPointByPlayers;
-    Position centerOfMap;
-    ArrayList<Entity> corners;
-    GameGrid gameGrid;
+    private HashMap<Integer, Integer> numberOfShipsByPlayer;
+    private HashMap<Integer, Position> startingPointByPlayers;
+    private Position centerOfMap;
+    private ArrayList<Entity> corners;
+    private GameGrid gameGrid;
+
+    private boolean isEnemyRushing;
+    private ArrayList<Double> enemyDistances;
 
     public HashMap<Integer, Position> getStartingPointByPlayers() { return startingPointByPlayers; }
     public int getMyId() { return myId; }
@@ -53,6 +57,7 @@ public class GameState
     public ArrayList<Ship> getEnemyShips() { return enemyShips; }
     public ArrayList<Ship> getMyShips() { return myShips; }
     public ArrayList<Ship> getMyShipsNextTurn() { return myShipsNextTurn; }
+    public ArrayList<Ship> getMyShipsPreviousTurn() { return myShipsPreviousTurn; }
     public ArrayList<Fleet> getMyFleetsNextTurn() { return myFleetsNextTurn; }
 
     public CombatManager getCombatManager() { return combatManager; }
@@ -96,6 +101,7 @@ public class GameState
 
         this.myShips = new ArrayList<>();
         this.myShipsNextTurn = new ArrayList<>();
+        this.myShipsPreviousTurn = new ArrayList<>();
         this.myFleetsNextTurn = new ArrayList<>();
         this.enemyShips = new ArrayList<>();
         this.planets = new ArrayList<>();
@@ -103,6 +109,9 @@ public class GameState
         this.numberOfPlanetsByPlayer = new HashMap<>();
         this.numberOfShipsByPlayer = new HashMap<>();
         this.startingPointByPlayers = new HashMap<>();
+
+        this.isEnemyRushing = false;
+        this.enemyDistances = new ArrayList<>();
     }
 
     public void updateGameState(final GameMap gameMap)
@@ -165,6 +174,12 @@ public class GameState
         this.gameGrid = new GameGrid(this);
 
         logState();
+    }
+
+    public void saveGameState(final GameMap gameMap)
+    {
+        this.myShipsPreviousTurn.clear();
+        this.myShipsPreviousTurn.addAll(this.myShips);
     }
 
     private void addFutureEnemyShips()
@@ -268,6 +283,37 @@ public class GameState
             if (Collision.segmentCircleIntersect(start, target, entity, entityRadius))
                 entitiesFound.add(entity);
         }
+    }
+
+    public boolean isEnemyRushing(final GameState gameState)
+    {
+        // No rush in 4 player games so far
+        if (gameState.getNumberOfPlayers() != 2)
+            return false;
+
+        if (gameState.enemyShips.size() > 3)
+            return false;
+
+        // Usually no rush after 20 turns
+        int turn = gameState.getTurn();
+        if (turn > 20)
+            return false;
+
+        int numberOfDockedEnemies = 0;
+        for (final Ship ship: gameState.getEnemyShips())
+            if (!ship.isUndocked())
+                numberOfDockedEnemies++;
+
+        if (numberOfDockedEnemies > 0)
+            return false;
+
+        if ((turn < 7 ) && (gameState.getDistanceManager().getAverageDistanceFromMyShipsToEnemies() < 70.0))
+            return true;
+
+        if ((turn > 10) && numberOfDockedEnemies == 0)
+            return true;
+
+        return false;
     }
 
     public void logState()
