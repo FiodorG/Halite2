@@ -21,7 +21,8 @@ public class Objective
         ASSASSINATION,
         LURE,
         FLEE,
-        UNDOCK
+        UNDOCK,
+        HIDEINCORNER
     }
 
     private final Entity targetEntity;
@@ -30,6 +31,7 @@ public class Objective
     private final OrderType orderType;
     private final boolean superObjective;
     private final int Id;
+    private boolean availableForFleets;
 
     public double getPriority() { return priority; }
     public OrderType getOrderType() { return orderType; }
@@ -38,9 +40,12 @@ public class Objective
     public int getId() { return Id; }
     public void decreaseRequiredShips(int value) { this.requiredShips -= value; }
     public boolean isAttackObjective() { if ((this.orderType == OrderType.ATTACK) || (this.orderType == OrderType.RUSH) || (this.orderType == OrderType.DEFEND) || (this.orderType == OrderType.ATTACKDOCKED)) return true; else return false; }
+    public boolean isPureAttackObjective() { if ((this.orderType == OrderType.ATTACK) || (this.orderType == OrderType.RUSH) || (this.orderType == OrderType.ATTACKDOCKED)) return true; else return false; }
+    public boolean isAttackDockedObjective() { if (this.orderType == OrderType.ATTACKDOCKED) return true; else return false; }
     public boolean isSuperObjective() { return superObjective; }
+    public boolean isAvailableForFleets() { return availableForFleets; }
 
-    public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective, final int Id)
+    public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective, final boolean availableForFleets, final int Id)
     {
         this.targetEntity = targetEntity;
         this.priority = priority;
@@ -48,6 +53,7 @@ public class Objective
         this.orderType = orderType;
         this.superObjective = superObjective;
         this.Id = Id;
+        this.availableForFleets = availableForFleets;
     }
 
     @Override

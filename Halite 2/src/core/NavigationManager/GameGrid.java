@@ -33,6 +33,9 @@ public class GameGrid
     {
         for(final Ship ship: ships)
         {
+            if (!ship.isUndocked())
+                continue;
+
             int index_row = (int)(ship.getXPos() / gridUnit);
             int index_col = (int)(ship.getYPos() / gridUnit);
 

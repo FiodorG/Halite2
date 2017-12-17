@@ -433,7 +433,7 @@ public class NavigationManager
                 case LURE:
                     newMove = moveShipToObjectiveLure(gameState, ship, target);
                     break;
-                case FLEE:
+                case FLEE: case HIDEINCORNER:
                     newMove = moveShipToObjectiveFlee(gameState, ship, target);
                     break;
                 case UNDOCK:

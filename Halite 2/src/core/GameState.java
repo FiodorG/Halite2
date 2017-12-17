@@ -5,10 +5,7 @@ import core.NavigationManager.GameGrid;
 import core.NavigationManager.NavigationManager;
 import hlt.*;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static core.Config.cornerIds;
 import static hlt.Ship.DockingStatus.Undocked;
@@ -67,7 +64,6 @@ public class GameState
     public NavigationManager getNavigationManager() { return navigationManager; }
     public DistanceManager getDistanceManager() { return distanceManager; }
     public Timer getTimer() { return timer; }
-    public HashMap<Integer, Position> startingPointByPlayers() { return startingPointByPlayers; }
     public Position startingPoint() { return startingPointByPlayers.get(myId); }
     public Position getCenterOfMap() { return centerOfMap; }
     public int getMapSizeX() { return mapSizeX; }
@@ -291,10 +287,18 @@ public class GameState
         if (gameState.getNumberOfPlayers() != 2)
             return false;
 
+        // No one sends a single ship anymore
         if (gameState.enemyShips.size() > 3)
             return false;
 
-        // Usually no rush after 20 turns
+        // On too big games, no rushing. There would be time for counter attack.
+        HashMap<Integer, Position> startingPoints = gameState.getStartingPointByPlayers();
+        Position startingPoint1 = (Position)startingPoints.values().toArray()[0];
+        Position startingPoint2 = (Position)startingPoints.values().toArray()[1];
+        if (startingPoint1.getDistanceTo(startingPoint2) > 130.0)
+            return false;
+
+        // No rush after 20 turns
         int turn = gameState.getTurn();
         if (turn > 20)
             return false;
@@ -307,13 +311,34 @@ public class GameState
         if (numberOfDockedEnemies > 0)
             return false;
 
-        if ((turn < 7 ) && (gameState.getDistanceManager().getAverageDistanceFromMyShipsToEnemies() < 70.0))
+        if ((turn <= 10 ) && (gameState.getDistanceManager().getAverageDistanceFromMyShipsToEnemies() < 70.0))
             return true;
 
         if ((turn > 10) && numberOfDockedEnemies == 0)
             return true;
 
         return false;
+    }
+
+    public Entity getCornerCloserToStart()
+    {
+        ArrayList<Entity> corners = getCorners();
+        Position myStartingPoint = getStartingPointByPlayers().get(myId);
+
+        double minDistance = Double.MAX_VALUE;
+        Position closestCorner = corners.get(0);
+
+        for(final Entity corner: corners)
+        {
+            double distance = corner.getDistanceTo(myStartingPoint);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closestCorner = corner;
+            }
+        }
+
+        return new Entity(myId, -5000, closestCorner.getXPos(), closestCorner.getYPos(), 0, 0);
     }
 
     public void logState()
