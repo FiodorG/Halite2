@@ -68,12 +68,12 @@ public class GameGrid
         }
     }
 
-    public Entity computeShortestPath(final Ship sourceShip, final Entity entity)
+    public Entity computeShortestPath(final Entity sourceEntity, final Entity targetEntity)
     {
-        GridCell sourceGridCell = new GridCell((int)(sourceShip.getXPos() / gridUnit), (int)(sourceShip.getYPos() / gridUnit));
+        GridCell sourceGridCell = new GridCell((int)(sourceEntity.getXPos() / gridUnit), (int)(sourceEntity.getYPos() / gridUnit));
         Node source = new Node(this, sourceGridCell);
 
-        GridCell endGridCell = new GridCell((int)(entity.getXPos() / gridUnit), (int)(entity.getYPos() / gridUnit));
+        GridCell endGridCell = new GridCell((int)(targetEntity.getXPos() / gridUnit), (int)(targetEntity.getYPos() / gridUnit));
         Node destination = new Node(this, endGridCell);
 
         List<Node> shortestPath = dijkstra(source, destination);
@@ -86,7 +86,7 @@ public class GameGrid
         else if (shortestPath.size() == 1)
             return new Entity(-1, -1, endGridCell.getRow() * gridUnit + gridUnit / 2, endGridCell.getCol() * gridUnit + gridUnit / 2, 0, 0);
         else if (shortestPath.size() == 0)
-            return entity;
+            return targetEntity;
 
         GridCell firstStep = shortestPath.get(1).getGridCell();
 

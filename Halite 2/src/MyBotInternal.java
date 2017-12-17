@@ -38,14 +38,15 @@ public class MyBotInternal
             objectiveManager.getObjectives(gameState);
             fleetManager.assignShips(gameState);
 
-            //combatManager.createCombatOperations(gameState);
-            //combatManager.resolveCombats(gameState, moveList);
+            combatManager.createCombatOperations(gameState);
 
-            navigationManager.generateMoves(gameState);
+            if (gameState.getBehaviourManager().getTestArgument() == 2)
+                navigationManager.generateMoves2(gameState);
+            else
+                navigationManager.generateMoves(gameState);
+
+            gameState.saveGameState(gameMap);
             Networking.sendMoves(navigationManager.getMoves());
-
-            if (gameState.getTurn() > 100000)
-                break;
         }
     }
 }

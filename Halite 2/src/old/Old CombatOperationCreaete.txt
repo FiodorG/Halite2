@@ -1,0 +1,118 @@
+    public void createCombatOperations(final GameState gameState)
+    {
+        this.combatOperations.clear();
+
+        ArrayList<Fleet> allFleets = gameState.getFleetManager().getFleetsToMove();
+        ArrayList<Ship> allShips = gameState.getFleetManager().getShipsToMove();
+
+        Set<Objective> objectives = new HashSet<>();
+
+        for (final Fleet fleet: allFleets)
+            objectives.add(fleet.getFirstObjectives());
+
+        for (final Ship ship: allShips)
+            objectives.add(ship.getObjective());
+
+        ArrayList<Fleet> fleetsAssigned = new ArrayList<>();
+        ArrayList<Ship> shipsAssigned = new ArrayList<>();
+
+        HashMap<Objective, ArrayList<Ship>> objectivesToShips = new HashMap<>();
+        for (final Ship ship: allShips)
+        {
+            Objective objective = ship.getObjective();
+
+            if (ship.getDistanceTo(objective.getTargetEntity()) > 20.0)
+                continue;
+
+            if (!objectivesToShips.containsKey(objective))
+                objectivesToShips.put(objective, new ArrayList<>());
+
+            objectivesToShips.get(objective).add(ship);
+            shipsAssigned.add(ship);
+        }
+
+        HashMap<Objective, ArrayList<Fleet>> objectivesToFleets = new HashMap<>();
+        for (final Fleet fleet: allFleets)
+        {
+            Objective objective = fleet.getFirstObjectives();
+
+            if (fleet.getCentroid().getDistanceTo(objective.getTargetEntity()) > 20.0)
+                continue;
+
+            if (!objectivesToFleets.containsKey(objective))
+                objectivesToFleets.put(objective, new ArrayList<>());
+
+            objectivesToFleets.get(objective).add(fleet);
+            fleetsAssigned.add(fleet);
+        }
+
+
+        for (final Objective objective: objectives)
+        {
+            ArrayList<Ship> shipsForObjective = objectivesToShips.get(objective);
+            ArrayList<Fleet> fleetsForObjective = objectivesToFleets.get(objective);
+
+            if ((shipsForObjective == null) || (fleetsForObjective == null))
+                continue;
+
+            ArrayList<Ship> enemyShips = new ArrayList<>();
+            for(final Ship enemyShip: gameState.getEnemyShips())
+            {
+                if (enemyShip.getDistanceTo(objective.getTargetEntity()) <= 20.0)
+                    enemyShips.add(enemyShip);
+
+                if (shipsForObjective != null)
+                {
+                    for (final Ship shipForObjective: shipsForObjective)
+                        if (shipForObjective.getDistanceTo(enemyShip) <= 20.0)
+                            enemyShips.add(enemyShip);
+                }
+
+                if (fleetsForObjective != null)
+                {
+                    for (final Fleet fleetForObjective: fleetsForObjective)
+                        if (fleetForObjective.getCentroid().getDistanceTo(enemyShip) <= 20.0)
+                            enemyShips.add(enemyShip);
+                }
+            }
+
+            CombatOperation combatOperation = new CombatOperation(objective, shipsForObjective, fleetsForObjective, enemyShips, this.combatOperationId++);
+            this.combatOperations.add(combatOperation);
+        }
+
+        for (final Ship ship: allShips)
+        {
+            if (!shipsAssigned.contains(ship))
+            {
+                Objective objective = ship.getObjective();
+
+                ArrayList<Ship> enemyShips = new ArrayList<>();
+                for(final Ship enemyShip: gameState.getEnemyShips())
+                    if (ship.getDistanceTo(enemyShip) <= 20.0)
+                        enemyShips.add(enemyShip);
+
+                CombatOperation combatOperation = new CombatOperation(objective, new ArrayList<>(Arrays.asList(ship)), new ArrayList<>(), enemyShips, this.combatOperationId++);
+                this.combatOperations.add(combatOperation);
+                shipsAssigned.add(ship);
+            }
+        }
+
+        for (final Fleet fleet: allFleets)
+        {
+            if (!fleetsAssigned.contains(fleet))
+            {
+                Objective objective = fleet.getFirstObjectives();
+
+                ArrayList<Ship> enemyShips = new ArrayList<>();
+                for(final Ship enemyShip: gameState.getEnemyShips())
+                    if (fleet.getCentroid().getDistanceTo(enemyShip) <= 25.0)
+                        enemyShips.add(enemyShip);
+
+                CombatOperation combatOperation = new CombatOperation(objective, new ArrayList<>(), new ArrayList<>(Arrays.asList(fleet)), enemyShips, this.combatOperationId++);
+                this.combatOperations.add(combatOperation);
+                fleetsAssigned.add(fleet);
+            }
+        }
+
+        logCombatOperations();
+    }

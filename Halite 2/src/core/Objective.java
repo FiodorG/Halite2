@@ -9,6 +9,7 @@ public class Objective
     public enum OrderType
     {
         ATTACK,
+        ATTACKDOCKED,
         DEFEND,
         COLONIZE,
         REINFORCECOLONY,
@@ -19,7 +20,8 @@ public class Objective
         ANTIRUSH,
         ASSASSINATION,
         LURE,
-        FLEE
+        FLEE,
+        UNDOCK
     }
 
     private final Entity targetEntity;
@@ -33,10 +35,9 @@ public class Objective
     public OrderType getOrderType() { return orderType; }
     public Entity getTargetEntity() { return targetEntity; }
     public int getRequiredShips() { return requiredShips; }
-    public boolean getSuperObjective() { return superObjective; }
     public int getId() { return Id; }
     public void decreaseRequiredShips(int value) { this.requiredShips -= value; }
-    public boolean isAttackObjective() { if ((this.orderType == OrderType.ATTACK) || (this.orderType == OrderType.RUSH) || (this.orderType == OrderType.DEFEND)) return true; else return false; }
+    public boolean isAttackObjective() { if ((this.orderType == OrderType.ATTACK) || (this.orderType == OrderType.RUSH) || (this.orderType == OrderType.DEFEND) || (this.orderType == OrderType.ATTACKDOCKED)) return true; else return false; }
     public boolean isSuperObjective() { return superObjective; }
 
     public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective, final int Id)

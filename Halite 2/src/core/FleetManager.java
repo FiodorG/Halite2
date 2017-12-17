@@ -7,23 +7,25 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 import static core.Config.numberOfClosestObjectives;
+import static core.Objective.OrderType.FLEE;
 
 public class FleetManager
 {
     private ArrayList<Ship> shipsToMove;
-
     private ArrayList<Ship> shipsAvailable;
     private ArrayList<Ship> shipsDocked;
     private ArrayList<Ship> shipsSuperObjectives;
 
-    private ArrayList<Fleet> fleets;
+    private ArrayList<Fleet> fleetsToMove;
+    private ArrayList<Fleet> fleetsAvailable;
+    private ArrayList<Fleet> fleetsSuperObjectives;
     private HashMap<Integer, Fleet> shipToFleets;
     private int fleetId;
 
     private ArrayList<Objective> superObjectives;
-
     private ArrayList<Objective> unfilledObjectives;
     private ArrayList<Objective> filledObjectives;
+    private ArrayList<Objective> undockObjectives;
 
     public FleetManager()
     {
@@ -32,7 +34,9 @@ public class FleetManager
         this.shipsDocked = new ArrayList<>();
         this.shipsSuperObjectives = new ArrayList<>();
 
-        this.fleets = new ArrayList<>();
+        this.fleetsToMove = new ArrayList<>();
+        this.fleetsAvailable = new ArrayList<>();
+        this.fleetsSuperObjectives = new ArrayList<>();
         this.shipToFleets = new HashMap<>();
         this.fleetId = 0;
 
@@ -40,27 +44,30 @@ public class FleetManager
         this.filledObjectives = new ArrayList<>();
 
         this.superObjectives = new ArrayList<>();
+        this.undockObjectives = new ArrayList<>();
     }
 
-    public ArrayList<Fleet> getFleets() { return fleets; }
     public ArrayList<Ship> getShipsToMove() { return shipsToMove; }
+    public ArrayList<Fleet> getFleetsToMove() { return fleetsToMove; }
+    public ArrayList<Fleet> getFleetsAvailable() { return fleetsAvailable; }
+    public HashMap<Integer, Fleet> getShipToFleets() { return shipToFleets; }
 
     public void assignShips(final GameState gameState)
     {
         resetObjectives(gameState.getObjectiveManager());
 
-        // 1. Move fleets
+        // 0. Refresh all
         refreshFleets(gameState);
+        refreshShips(gameState);
+
+        // 1. Move fleets
+        assignFleetsToSuperObjectives(gameState);
         assignFleetsToObjectives(gameState);
 
-        resetAvailableShips(gameState);
-
-        // 2. Move Super Objectives
-        resetShipsSuperObjective(gameState);
+        // 2. Move Ships
         assignShipsToSuperObjectives(gameState);
-
-        // 3. Assign Ships to Objectives
         assignShipsToObjectives(gameState);
+        undockShips(gameState);
 
         // 4. Try to create Fleet
         assignShipsToFleets(gameState);
@@ -71,12 +78,32 @@ public class FleetManager
 
     private void assignFleetsToObjectives(final GameState gameState)
     {
-        for(final Fleet fleet: this.fleets)
+        for(final Fleet fleet: this.fleetsAvailable)
         {
             HashMap<Objective, Double> objectivesAvailable = getAvailableObjectives(fleet.getCentroid(), gameState);
             Objective objective = selectObjective(fleet, objectivesAvailable, gameState);
             updateObjective(objective, fleet);
         }
+    }
+
+    private void assignFleetsToSuperObjectives(final GameState gameState)
+    {
+        ArrayList<Fleet> fleetsToRemove = new ArrayList<>();
+
+        for(final Fleet fleet: this.fleetsAvailable)
+        {
+            HashMap<Objective, Double> objectivesAvailable = DistanceManager.getClosestObjectiveFromEntity(superObjectives, fleet.getCentroid(), 1);
+
+            if (objectivesAvailable.isEmpty())
+                break;
+
+            Objective objective = selectObjective(fleet, objectivesAvailable, gameState);
+            updateSuperObjective(objective, fleet);
+            fleetsToRemove.add(fleet);
+        }
+
+        this.fleetsAvailable.removeAll(fleetsToRemove);
+        this.fleetsSuperObjectives.addAll(fleetsToRemove);
     }
 
     private void assignShipsToSuperObjectives(final GameState gameState)
@@ -85,19 +112,18 @@ public class FleetManager
 
         for(final Ship ship: this.shipsAvailable)
         {
-            // Only target new ships
-            if (ship.getObjective() != null)
-                continue;
-
             HashMap<Objective, Double> objectivesAvailable = DistanceManager.getClosestObjectiveFromEntity(superObjectives, ship, 1);
 
             if (objectivesAvailable.isEmpty())
                 break;
 
             Objective objective = selectObjective(ship, objectivesAvailable, gameState);
+
+            if ((gameState.getMyShipsPreviousTurn().contains(ship)) && (objective.getOrderType() != FLEE))
+                continue;
+
             updateSuperObjective(objective, ship);
             shipsToRemove.add(ship);
-            this.shipsToMove.add(ship);
         }
 
         this.shipsAvailable.removeAll(shipsToRemove);
@@ -111,7 +137,6 @@ public class FleetManager
             HashMap<Objective, Double> objectivesAvailable = getAvailableObjectives(ship, gameState);
             Objective objective = selectObjective(ship, objectivesAvailable, gameState);
             updateObjective(objective, ship);
-            this.shipsToMove.add(ship);
         }
     }
 
@@ -121,11 +146,15 @@ public class FleetManager
         {
             objective.decreaseRequiredShips(1);
             ((Ship)entity).setObjective(objective);
+
+            this.shipsToMove.add((Ship)entity);
         }
         else if (entity instanceof Fleet)
         {
             objective.decreaseRequiredShips(((Fleet)entity).getShips().size());
             ((Fleet)entity).addObjective(objective);
+
+            this.fleetsToMove.add((Fleet)entity);
         }
         else
             throw new IllegalStateException("Can't update objective with unknown entity.");
@@ -140,8 +169,22 @@ public class FleetManager
 
     private void updateSuperObjective(final Objective objective, final Entity entity)
     {
-        objective.decreaseRequiredShips(1);
-        ((Ship)entity).setObjective(objective);
+        if (entity instanceof Ship)
+        {
+            objective.decreaseRequiredShips(1);
+            ((Ship)entity).setObjective(objective);
+
+            this.shipsToMove.add((Ship)entity);
+        }
+        else if (entity instanceof Fleet)
+        {
+            objective.decreaseRequiredShips(((Fleet)entity).getShips().size());
+            ((Fleet)entity).addObjective(objective);
+
+            this.fleetsToMove.add((Fleet)entity);
+        }
+        else
+            throw new IllegalStateException("Can't update objective with unknown entity.");
 
         if (objective.getRequiredShips() <= 0)
             superObjectives.remove(objective);
@@ -240,13 +283,12 @@ public class FleetManager
                 Objective newSuperObjective = this.superObjectives.get(indexOfSuperObjective);
                 ship.setObjective(newSuperObjective);
                 updateSuperObjective(newSuperObjective, ship);
-                this.shipsToMove.add(ship);
             }
         }
         this.shipsSuperObjectives.removeAll(shipsToRemove);
     }
 
-    private void resetAvailableShips(final GameState gameState)
+    private void refreshShips(final GameState gameState)
     {
         shipsToMove.clear();
         shipsAvailable.clear();
@@ -265,6 +307,8 @@ public class FleetManager
                     shipsDocked.add(ship);
             }
         }
+
+        resetShipsSuperObjective(gameState);
     }
 
     private void resetObjectives(final ObjectiveManager objectiveManager)
@@ -275,14 +319,10 @@ public class FleetManager
 
         this.superObjectives.clear();
         this.superObjectives.addAll(objectiveManager.getSuperObjectives());
-     }
 
-    private void logShips()
-    {
-        for(final Ship ship: this.shipsToMove)
-            DebugLog.addLog(ship.toString());
-        DebugLog.addLog("");
-    }
+        this.undockObjectives.clear();
+        this.undockObjectives.addAll(objectiveManager.getUndockObjectives());
+     }
 
     private void assignShipsToFleets(final GameState gameState)
     {
@@ -295,13 +335,14 @@ public class FleetManager
                 break;
             else
             {
-                HashMap<Fleet, Double> fleetsAvailable = getAvailableFleets(ship, gameState.getDistanceManager());
-                Fleet fleet = selectFleet(ship, fleetsAvailable, gameState.getBehaviourManager());
+                HashMap<Fleet, Double> fleetsAvailable = getAvailableFleets(gameState, ship, gameState.getDistanceManager());
+                Fleet fleet = selectFleet(ship, fleetsAvailable, gameState);
 
                 if (fleet != null)
                 {
-                    ship.setObjective(new Objective(fleet, 100.0, 0, Objective.OrderType.GROUP, false, -1));
-                    fleet.decreaseReinforcementNeed();
+                    Objective objective = new Objective(fleet, 100.0, 1, Objective.OrderType.GROUP, false, -1);
+                    this.shipsToMove.remove(ship);
+                    updateObjective(objective, ship);
                 }
             }
         }
@@ -322,7 +363,8 @@ public class FleetManager
                 Fleet fleet = new Fleet(sourceShip, null, this.fleetId++);
                 fleet.addShip(ship);
                 fleet.addObjective(new Objective(fleet.getCentroid(),100.0,2, Objective.OrderType.GROUP,false, -1));
-                this.fleets.add(fleet);
+                this.fleetsAvailable.add(fleet);
+                this.fleetsToMove.add(fleet);
                 this.shipToFleets.put(sourceShip.getId(), fleet);
                 this.shipToFleets.put(ship.getId(), fleet);
                 this.shipsAvailable.remove(sourceShip);
@@ -352,56 +394,100 @@ public class FleetManager
 
     private void refreshFleets(final GameState gameState)
     {
-        // Remove dead ships, and refresh new ones,
-        // remove all objectives.
+        ArrayList<Fleet> fleetsToRemove = new ArrayList<>();
 
-        Iterator<Fleet> i = this.fleets.iterator();
-        while (i.hasNext())
+        for (final Fleet fleet: this.fleetsAvailable)
         {
-            Fleet fleet = i.next();
             fleet.getObjectives().clear();
-            boolean removeFleet = false;
-
-            Iterator<Ship> j = fleet.getShips().iterator();
-            while (j.hasNext())
-            {
-                Ship ship = j.next();
-                int index = gameState.getMyShips().indexOf(ship);
-
-                if (index == -1)
-                {
-                    // ship is dead
-                    j.remove();
-                    shipToFleets.remove(ship.getId());
-
-                    if (fleet.getShips().size() <= 1)
-                        removeFleet = true;
-                }
-                else
-                {
-                    // update ship
-                    Ship updatedShip = gameState.getMyShips().get(index);
-                    fleet.getShips().set(fleet.getShips().indexOf(ship), updatedShip);
-                    this.shipToFleets.put(updatedShip.getId(), fleet);
-                }
-            }
+            boolean removeFleet = updateShipsToFleet(gameState, fleet);
 
             if (removeFleet)
-            {
-                // Put back ship into pool
-                for(final Ship ship: fleet.getShips())
-                {
-                    this.shipsAvailable.add(ship);
-                    shipToFleets.remove(ship.getId());
-                }
-                i.remove();
-            }
+                fleetsToRemove.add(fleet);
             else
                 fleet.computeCentroid();
         }
+
+        for (final Fleet fleet: fleetsToRemove)
+        {
+            for(final Ship ship: fleet.getShips())
+            {
+                this.shipsAvailable.add(ship);
+                shipToFleets.remove(ship.getId());
+            }
+        }
+
+        this.fleetsAvailable.removeAll(fleetsToRemove);
+        this.fleetsToMove.clear();
+
+        resetFleetsSuperObjective(gameState);
     }
 
-    private Fleet selectFleet(final Entity entity, final HashMap<Fleet, Double> fleetsAvailable, final BehaviourManager behaviourManager)
+    private boolean updateShipsToFleet(final GameState gameState, Fleet fleet)
+    {
+        boolean removeFleet = false;
+
+        ArrayList<Ship> shipsToRemove = new ArrayList<>();
+        for (final Ship ship: fleet.getShips())
+        {
+            int index = gameState.getMyShips().indexOf(ship);
+
+            if (index == -1)
+            {
+                // ship is dead
+                shipsToRemove.add(ship);
+                shipToFleets.remove(ship.getId());
+            }
+            else
+            {
+                // update ship
+                Ship updatedShip = gameState.getMyShips().get(index);
+                fleet.getShips().set(fleet.getShips().indexOf(ship), updatedShip);
+                this.shipToFleets.put(updatedShip.getId(), fleet);
+            }
+        }
+
+        fleet.getShips().removeAll(shipsToRemove);
+
+        if (fleet.getShips().size() <= 1)
+            removeFleet = true;
+
+        return removeFleet;
+    }
+
+    private void resetFleetsSuperObjective(final GameState gameState)
+    {
+        ArrayList<Fleet> fleetsToRemove = new ArrayList<>();
+        for(final Fleet fleet: this.fleetsSuperObjectives)
+        {
+            boolean removeFleet = updateShipsToFleet(gameState, fleet);
+
+            if (removeFleet)
+                fleetsToRemove.add(fleet);
+            else
+                fleet.computeCentroid();
+        }
+        this.fleetsSuperObjectives.removeAll(fleetsToRemove);
+
+        fleetsToRemove.clear();
+        for(final Fleet fleet: this.fleetsSuperObjectives)
+        {
+            Objective oldSuperObjective = fleet.getFirstObjectives();
+            int indexOfSuperObjective = this.superObjectives.indexOf(oldSuperObjective);
+
+            if (indexOfSuperObjective == -1)
+                fleetsToRemove.add(fleet);
+            else
+            {
+                Objective newSuperObjective = this.superObjectives.get(indexOfSuperObjective);
+                fleet.setObjective(newSuperObjective);
+                updateSuperObjective(newSuperObjective, fleet);
+            }
+        }
+        this.fleetsSuperObjectives.removeAll(fleetsToRemove);
+        this.fleetsAvailable.addAll(fleetsToRemove);
+    }
+
+    private Fleet selectFleet(final Entity entity, final HashMap<Fleet, Double> fleetsAvailable, final GameState gameState)
     {
         Fleet chosenFleet = null;
         double bestScore = -Double.MAX_VALUE;
@@ -411,10 +497,10 @@ public class FleetManager
             Fleet fleet = entry.getKey();
             Double distance = entry.getValue();
 
-            if (fleet.priorityReinforcementNeed() < ((Ship) entity).getObjective().getPriority())
+            if (fleet.priorityReinforcementNeed(gameState) < ((Ship) entity).getObjective().getPriority())
                 continue;
 
-            double score = behaviourManager.combinePriorityWithDistance(fleet.priorityReinforcementNeed(), distance);
+            double score = gameState.getBehaviourManager().combinePriorityWithDistance(fleet.priorityReinforcementNeed(gameState), distance);
             if (score > bestScore)
             {
                 bestScore = score;
@@ -425,24 +511,39 @@ public class FleetManager
         return chosenFleet;
     }
 
-    private HashMap<Fleet, Double> getAvailableFleets(final Entity entity, final DistanceManager distanceManager)
+    private HashMap<Fleet, Double> getAvailableFleets(final GameState gameState, final Entity entity, final DistanceManager distanceManager)
     {
-        HashMap<Fleet, Double> fleetsAvailable = distanceManager.getClosestFleetsFromShip(this.fleets, entity, 5);
+        HashMap<Fleet, Double> fleetsAvailable = DistanceManager.getClosestFleetsFromShip(this.fleetsAvailable, entity, 5);
         HashMap<Fleet, Double> fleetsToChoose = new HashMap<>();
 
         for (HashMap.Entry<Fleet, Double> entry : fleetsAvailable.entrySet())
         {
             Fleet fleet = entry.getKey();
-            if (fleet.getReinforcementNeed() > 0)
+            if (fleet.getReinforcementNeed(gameState) > 0)
                 fleetsToChoose.put(fleet, entry.getValue());
         }
 
         return fleetsToChoose;
     }
 
+    private void undockShips(final GameState gameState)
+    {
+        for(final Ship ship: this.shipsDocked)
+            for (final Objective objective: this.undockObjectives)
+                if (objective.getTargetEntity().equals(ship))
+                    updateObjective(objective, ship);
+    }
+
+    private void logShips()
+    {
+        for(final Ship ship: this.shipsToMove)
+            DebugLog.addLog(ship.toString());
+        DebugLog.addLog("");
+    }
+
     private void logFleets()
     {
-        for(final Fleet fleet: this.fleets)
+        for(final Fleet fleet: this.fleetsToMove)
             DebugLog.addLog(fleet.toString());
         DebugLog.addLog("");
     }

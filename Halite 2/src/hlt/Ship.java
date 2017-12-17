@@ -54,10 +54,7 @@ public class Ship extends Entity
     public void setObjective(final Objective objective) { this.objective = objective; }
 
     public boolean canDock(final Planet planet) { return getDistanceTo(planet) <= Constants.DOCK_RADIUS + planet.getRadius(); }
-    public boolean isUndocked()
-    {
-        return getDockingStatus() == DockingStatus.Undocked;
-    }
+    public boolean isUndocked() { return getDockingStatus() == DockingStatus.Undocked; }
 
     @Override
     public boolean equals(Object object)
@@ -77,9 +74,8 @@ public class Ship extends Entity
     {
         return "Ship" + this.getId() + "[" +
                 super.toString() +
-                ", status=" + this.dockingStatus +
-                ", dockPlanet=" + this.dockedPlanet +
-                ", dockTurns=" + this.dockingProgress +
+                ", " + this.dockingStatus + " on " + this.dockedPlanet +
+                "(" + this.dockingProgress + ")" +
                 ", obj=" + ((this.objective == null)? "null" : this.objective.toString()) +
                 "]";
     }

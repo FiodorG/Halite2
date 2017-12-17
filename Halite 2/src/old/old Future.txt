@@ -1,0 +1,47 @@
+
+//    private ArrayList<Node<Event>> getChildren(final Node<Event> parentNode)
+//    {
+//        final LinkedList<Node<Event>> parents = parentNode.getParents();
+//
+//        ArrayList<Ship> myShipsToMove = new ArrayList<>();
+//        ArrayList<Ship> enemyShipsToMove = new ArrayList<>();
+//
+//        for(final Node<Event> node: parents)
+//        {
+//            Ship ship = node.getData().getSourceEntity();
+//            if (!this.myShips.contains(ship))
+//                myShipsToMove.add(ship);
+//            if (!this.enemyShips.contains(ship))
+//                enemyShipsToMove.add(ship);
+//        }
+//
+//        if (!myShipsToMove.isEmpty())
+//        {
+//            // Generate moves for all of my ships
+//            Ship sourceShip = myShipsToMove.remove(0);
+//            boolean isMaxPlayer = true;
+//
+//            for(final Ship targetShip: this.myShips)
+//            {
+//                EventType eventType = generateEventType(parentNode, sourceShip, targetShip);
+//
+//                Event event = new Event(eventType, sourceShip, targetShip);
+//                parentNode.addNodeToChildren(event, isMaxPlayer, parentNode.getDepth() + 1, 0);
+//            }
+//
+//            for(final Ship targetShip: this.enemyShips)
+//            {
+//                EventType eventType = generateEventType(parentNode, sourceShip, targetShip);
+//
+//                Event event = new Event(eventType, sourceShip, targetShip);
+//                parentNode.addNodeToChildren(event, isMaxPlayer, parentNode.getDepth() + 1, 0);
+//            }
+//        }
+//        else
+//        {
+//            // Generate moves for enemy ships
+//            Ship sourceShip = enemyShipsToMove.remove(0);
+//        }
+//
+//        return parentNode.getChildren();
+//    }

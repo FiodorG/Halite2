@@ -2,6 +2,8 @@ package hlt;
 
 import core.VectorBasic;
 
+import static hlt.Constants.SHIP_RADIUS;
+
 public class Collision
 {
     /**
@@ -55,80 +57,115 @@ public class Collision
         return num * num;
     }
 
-    public static boolean willCollideCrossVectors(ThrustMove m1, ThrustMove m2)
+    private static boolean mightCollide(ThrustMove move1, ThrustMove move2)
     {
-        VectorBasic v1 = new VectorBasic(m1.getShip().getXPos(), m1.getShip().getYPos());
-        VectorBasic v2 = new VectorBasic(m2.getShip().getXPos(), m2.getShip().getYPos());
+        return move1.getShip().getDistanceTo(move2.getShip()) <= move1.getThrust() + move2.getThrust() + SHIP_RADIUS * 2;
+    }
 
-        VectorBasic r1 = new VectorBasic(m1.dX(), m1.dY());
-        VectorBasic r2 = new VectorBasic(m2.dX(), m2.dY());
+    public static boolean willCollideClosedForm(ThrustMove move1, ThrustMove move2)
+    {
+        if (!mightCollide(move1, move2))
+            return false;
 
-        VectorBasic p1 = v1.add(r1);
-        VectorBasic p2 = v2.add(r2);
+        double radius = SHIP_RADIUS * 2;
+        double x1 = move1.getShip().getXPos();
+        double x2 = move2.getShip().getXPos();
+        double y1 = move1.getShip().getYPos();
+        double y2 = move2.getShip().getYPos();
 
-        VectorBasic newDiff = p1.subtract(p2);
+        double dx = x1 - x2;
+        double dy = y1 - y2;
+        double dvx = move1.dX() - move2.dX();
+        double dvy = move1.dY() - move2.dY();
 
-        Double cross = r1.cross(r2);
-        VectorBasic diff = v1.subtract(v2);
+        double a = dvx * dvx + dvy * dvy;
+        double b = 2 * (dx * dvx + dy * dvy);
+        double c = dx * dx + dy * dy - radius * radius;
+        double d = b * b - 4 * a * c;
 
-        if(newDiff.length() < Constants.SHIP_RADIUS * 2 + 0.1)
+        double time;
+        if (a == 0.0)
         {
-            return true;
+            if (b == 0.0)
+            {
+                if (c <= 0.0)
+                    time = 0;
+                else
+                    time = -1;
+            }
+            else
+            {
+                double t = - c / b;
+                if (t >= 0.0)
+                    time = t;
+                else
+                    time = -1;
+            }
+        }
+        else if (d == 0.0)
+        {
+            time = - b / (2 * a);
+        }
+        else if (d > 0)
+        {
+            double t1 = - b + Math.sqrt(d);
+            double t2 = - b - Math.sqrt(d);
+
+            if (t1 >= 0.0 && t2 >= 0.0)
+                time = Math.min(t1, t2) / (2 * a);
+            else if (t1 <= 0.0 && t2 <= 0.0)
+                time = Math.max(t1, t2) / (2 * a);
+            else
+                time = 0;
         }
         else
-        {
-            if (cross < 0.01 && cross > -0.01)
-                return false;
+            time = -1;
 
-            Double c1 = diff.cross(r1);
-            Double c2 = diff.cross(r2);
-
-            Double t = - c1 / cross;
-            Double u = - c2 / cross;
-
-            if (t > 0 && t < 1 && u > 0 && u < 1)
-                return true;
-            else
-                return false;
-        }
+        return ((time >= 0 ) && (time <= 1));
     }
 
-    public static boolean willCollideIterative(ThrustMove m1, ThrustMove m2)
+    public static void resolveMoves(ThrustMove firstMove, ThrustMove secondMove)
     {
-        VectorBasic v1 = new VectorBasic(m1.getShip().getXPos(), m1.getShip().getYPos());
-        VectorBasic v2 = new VectorBasic(m2.getShip().getXPos(), m2.getShip().getYPos());
+        // Find the further possible move for second move.
 
-        for (double i = 0.0; i <= 1; i += 0.05)
+        ThrustMove newSecondMove = new ThrustMove(secondMove);
+        int thrustSecondMove = secondMove.getThrust();
+
+        int thrustCrashSecondMove = thrustSecondMove;
+        for (int i = 0; i <= thrustSecondMove; i++)
         {
-            VectorBasic r1 = new VectorBasic(m1.dX() * i, m1.dY() * i);
-            VectorBasic r2 = new VectorBasic(m2.dX() * i, m2.dY() * i);
+            newSecondMove.setThrust(i);
 
-            VectorBasic p1 = v1.add(r1);
-            VectorBasic p2 = v2.add(r2);
-
-            if (p1.subtract(p2).length() < Constants.SHIP_RADIUS * 2 + 0.1)
-                return true;
+            if (willCollideClosedForm(firstMove, newSecondMove))
+            {
+                thrustCrashSecondMove = i;
+                break;
+            }
         }
 
-        return false;
-    }
+        secondMove.setThrust(Math.max(thrustCrashSecondMove - 1, 0));
 
-    public static void avoidCollisions(ThrustMove m1, ThrustMove m2)
-    {
-        VectorBasic v1 = new VectorBasic(m1.getShip().getXPos(), m1.getShip().getYPos());
-        VectorBasic v2 = new VectorBasic(m2.getShip().getXPos(), m2.getShip().getYPos());
+        // If second move cannot be tweaked, change the first move
 
-        for (int i = 0; i <= 7; i++)
+        if (thrustCrashSecondMove == 0)
         {
-            double proportion = (i / 7.0);
-            VectorBasic r1 = new VectorBasic(m1.dX((int)(m1.getThrust() * proportion)), m1.dY((int)(m1.getThrust() * proportion)));
-            VectorBasic r2 = new VectorBasic(m2.dX((int)(m2.getThrust() * proportion)), m2.dY((int)(m2.getThrust() * proportion)));
+            ThrustMove newFirstMove = new ThrustMove(firstMove);
+            int thrustFirstMove = firstMove.getThrust();
 
-            VectorBasic p1 = v1.add(r1);
-            VectorBasic p2 = v2.add(r2);
+            int thrustCrashFirstMove = thrustFirstMove;
+            for (int i = 0; i <= thrustFirstMove; i++)
+            {
+                newFirstMove.setThrust(i);
 
-            if (p1.subtract(p2).length() < Constants.SHIP_RADIUS * 2 + 0.1)
-                m2.setThrust(m2.getThrust() * (int)((i - 1) / 7.0));
+                if (willCollideClosedForm(newFirstMove, secondMove))
+                {
+                    thrustCrashFirstMove = i;
+                    break;
+                }
+            }
+
+            firstMove.setThrust(Math.max(thrustCrashFirstMove - 1, 0));
         }
     }
 }
+

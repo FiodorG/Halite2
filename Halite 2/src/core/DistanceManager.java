@@ -65,9 +65,40 @@ public class DistanceManager
         }
     }
 
-    public double getClosestEnemyShipDistance(final Ship ship)
+    public double getClosestUndockedEnemyShipDistance(final Ship ship)
     {
-        return this.distanceMatrixShipShip.get(ship.getId()).first().getDistance();
+        double minDistance = Double.MAX_VALUE;
+
+        for(final Ship enemyShip: this.enemyShips)
+        {
+            if (enemyShip.isUndocked())
+            {
+                double distance = ship.getDistanceTo(enemyShip);
+
+                if (distance < minDistance)
+                    minDistance = distance;
+            }
+        }
+
+        return minDistance;
+    }
+
+    public double getClosestDockedEnemyShipDistance(final Ship ship)
+    {
+        double minDistance = Double.MAX_VALUE;
+
+        for(final Ship enemyShip: this.enemyShips)
+        {
+            if (!enemyShip.isUndocked())
+            {
+                double distance = ship.getDistanceTo(enemyShip);
+
+                if (distance < minDistance)
+                    minDistance = distance;
+            }
+        }
+
+        return minDistance;
     }
 
     public Ship getClosestEnemyShip(final Entity entity)
@@ -77,15 +108,28 @@ public class DistanceManager
 
         for(final Ship enemyShip: this.enemyShips)
         {
-            double distance = entity.getDistanceTo(enemyShip);
-            if (distance < minDistance)
+            if (enemyShip.isUndocked())
             {
-                minDistance = distance;
-                closestShip = enemyShip;
+                double distance = entity.getDistanceTo(enemyShip);
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    closestShip = enemyShip;
+                }
             }
         }
 
         return closestShip;
+    }
+
+    public double getAverageDistanceFromMyShipsToEnemies()
+    {
+        double averageDistance = 0;
+        for (final Ship myShip: this.myShips)
+            for (final Ship enemyShip: this.enemyShips)
+                averageDistance += myShip.getDistanceTo(enemyShip);
+
+        return averageDistance / this.myShips.size() / this.enemyShips.size();
     }
 
     public ArrayList<Ship> getEnemiesCloserThan(final Entity entity, final double minDistance)
@@ -93,6 +137,21 @@ public class DistanceManager
         ArrayList<Ship> closeEnemyShips = new ArrayList<>();
         for(final Ship enemyShip: this.enemyShips)
             if (enemyShip.getDistanceTo(entity) < minDistance)
+                closeEnemyShips.add(enemyShip);
+
+        return closeEnemyShips;
+    }
+
+    public ArrayList<Ship> getOpponentsCloserThan(final Entity entity, final double minDistance)
+    {
+        ArrayList<Ship> closeEnemyShips = new ArrayList<>();
+
+        for(final Ship myShip: this.myShips)
+            if ((myShip.getOwner() != entity.getOwner()) && (myShip.getDistanceTo(entity) < minDistance))
+                closeEnemyShips.add(myShip);
+
+        for(final Ship enemyShip: this.enemyShips)
+            if ((enemyShip.getOwner() != entity.getOwner()) && (enemyShip.getDistanceTo(entity) < minDistance))
                 closeEnemyShips.add(enemyShip);
 
         return closeEnemyShips;
@@ -186,5 +245,26 @@ public class DistanceManager
         }
 
         return new Position(x / ships.size(), y / ships.size());
+    }
+
+    public static Ship getClosestDockedShipOnPlanetFromEntity(final GameState gameState, final Entity source, final Entity target)
+    {
+        Planet planet = (Planet)target;
+
+        Ship closestShip = gameState.getGameMap().getShip(planet.getOwner(), planet.getDockedShips().get(0));
+        double closestShipDistance = source.getDistanceTo(closestShip);
+
+        for (final int shipid: planet.getDockedShips())
+        {
+            Ship shipIterator = gameState.getGameMap().getShip(planet.getOwner(), shipid);
+            double distance = source.getDistanceTo(shipIterator);
+            if (distance < closestShipDistance)
+            {
+                closestShip = shipIterator;
+                closestShipDistance = distance;
+            }
+        }
+
+        return closestShip;
     }
 }

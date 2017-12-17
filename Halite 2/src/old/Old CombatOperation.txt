@@ -1,0 +1,61 @@
+public void createCombatOperations(final GameState gameState)
+    {
+        clearCombatOperations();
+
+        for(final Fleet fleet: gameState.getFleetManager().getFleets())
+            for(final Ship ship: fleet.getShips())
+            {
+                if(createCombatOperation(ship, fleet, gameState))
+                   break;
+            }
+
+        logCombatOperations();
+    }
+
+
+    public void resolveCombats(final GameState gameState, final ArrayList<Move> moveList)
+    {
+        for(final CombatOperation combatOperation: this.combatOperations)
+            resolveCombat(combatOperation, gameState, moveList);
+    }
+
+
+    public CombatOperation createCombatOperationForShip(final Ship sourceShip, final GameState gameState, final Entity target)
+    {
+        ArrayList<Ship> enemyShips = new ArrayList<>();
+        for(final Ship ship: gameState.getEnemyShips())
+            if (ship.getDistanceTo(sourceShip) <= 20.0)
+                enemyShips.add(ship);
+
+        if (enemyShips.isEmpty())
+            return new CombatOperation();
+
+        ArrayList<Ship> myShips = new ArrayList<>();
+        for(final Ship ship: gameState.getMyShipsNextTurn())
+            if (ship.getDistanceTo(sourceShip) <= 7.0)
+                myShips.add(ship);
+
+        CombatOperation combatOperation = new CombatOperation(sourceShip, myShips, enemyShips, this.combatOperationId++);
+        logCombatOperations(combatOperation);
+        return combatOperation;
+    }
+
+    public CombatOperation createCombatOperationForFleet(final Fleet fleet, final GameState gameState, final Entity target)
+    {
+        ArrayList<Ship> enemyShips = new ArrayList<>();
+        for(final Ship ship: gameState.getEnemyShips())
+            if (ship.getDistanceTo(fleet.getCentroid()) <= 20.0)
+                enemyShips.add(ship);
+
+        if (enemyShips.isEmpty())
+            return new CombatOperation();
+
+        ArrayList<Ship> myShips = new ArrayList<>();
+        for(final Ship ship: gameState.getMyShipsNextTurn())
+            if (ship.getDistanceTo(fleet.getCentroid()) <= 7.0)
+                myShips.add(ship);
+
+        CombatOperation combatOperation = new CombatOperation(fleet, myShips, enemyShips, this.combatOperationId++);
+        logCombatOperations(combatOperation);
+        return combatOperation;
+    }
