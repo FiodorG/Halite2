@@ -1,5 +1,6 @@
 package core;
 
+import core.CombatManager.CombatOperation;
 import hlt.*;
 
 import java.lang.reflect.Array;
@@ -193,6 +194,44 @@ public class DistanceManager
         return closestShip;
     }
 
+    public Ship getClosestAllyShipFromCombatOperation(final Entity entity, final ArrayList<Fleet> myFleetsNearby, final ArrayList<Ship> myShipsNearby)
+    {
+        double minDistance = Double.MAX_VALUE;
+
+        Ship closestShip;
+        if (!myShipsNearby.isEmpty())
+            closestShip = myShipsNearby.get(0);
+        else
+            closestShip = myFleetsNearby.get(0).getShips().get(0);
+
+        for(final Ship alliedShip: this.myShips)
+        {
+            boolean isContainedInCombatOperation = false;
+
+            for (final Fleet myFleet: myFleetsNearby)
+                if (myFleet.getShips().contains(alliedShip))
+                {
+                    isContainedInCombatOperation = true;
+                    break;
+                }
+
+            if (myShipsNearby.contains(alliedShip))
+                isContainedInCombatOperation = true;
+
+            if (!isContainedInCombatOperation)
+            {
+                double distance = alliedShip.getDistanceTo(entity);
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    closestShip = alliedShip;
+                }
+            }
+        }
+
+        return closestShip;
+    }
+
     public static HashMap<Objective, Double> getClosestObjectiveFromEntity(final ArrayList<Objective> objectives, final Entity entity, final int numberOfClosest)
     {
         Entity sourceEntity = entity;
@@ -217,8 +256,14 @@ public class DistanceManager
                     if (objective.isAvailableForFleets())
                         closestObjectives.put(objective, distances.get(objective));
                 }
+                else if (entity instanceof Ship)
+                {
+                    if (objective.isAvailableForShips())
+                        closestObjectives.put(objective, distances.get(objective));
+                }
                 else
-                    closestObjectives.put(objective, distances.get(objective));
+                    throw new IllegalStateException("No objectives for entities.");
+//                    closestObjectives.put(objective, distances.get(objective));
             }
             else
                 break;

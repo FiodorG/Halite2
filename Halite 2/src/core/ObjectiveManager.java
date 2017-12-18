@@ -65,6 +65,7 @@ public class ObjectiveManager
                     Objective.OrderType.RUSH,
                     true,
                     true,
+                    true,
                     this.objectiveId++
                 );
 
@@ -74,6 +75,7 @@ public class ObjectiveManager
                         behaviourManager.getUndockedShipPriorityForRush(gameState, distanceManager, ship),
                         behaviourManager.getRushShipsPerObjective(gameState, distanceManager, ship),
                         Objective.OrderType.RUSH,
+                        true,
                         true,
                         true,
                         this.objectiveId++
@@ -103,6 +105,7 @@ public class ObjectiveManager
                 Objective.OrderType.ANTIRUSH,
                 false,
                 true,
+                true,
                 this.objectiveId++
             );
 
@@ -127,6 +130,7 @@ public class ObjectiveManager
                     Objective.OrderType.REINFORCECOLONY,
                     false,
                     false,
+                    true,
                     this.objectiveId++
                 );
 
@@ -139,6 +143,7 @@ public class ObjectiveManager
                     Objective.OrderType.COLONIZE,
                     false,
                     false,
+                    true,
                     this.objectiveId++
                 );
 
@@ -164,6 +169,7 @@ public class ObjectiveManager
                     Objective.OrderType.ATTACKDOCKED,
                     false,
                     true,
+                    true,
                     this.objectiveId++
                 );
 
@@ -175,6 +181,7 @@ public class ObjectiveManager
                     behaviourManager.getRequiredShipsForAttack(gameState, distanceManager, ship),
                     Objective.OrderType.ATTACK,
                     false,
+                    true,
                     true,
                     this.objectiveId++
                 );
@@ -197,6 +204,7 @@ public class ObjectiveManager
                     1,
                     Objective.OrderType.DEFEND,
                     false,
+                    true,
                     true,
                     this.objectiveId++
                 );
@@ -222,6 +230,7 @@ public class ObjectiveManager
                         Objective.OrderType.UNDOCK,
                         false,
                         false,
+                        true,
                         this.objectiveId++
                 );
 
@@ -235,8 +244,6 @@ public class ObjectiveManager
     private void getAssassinationObjectives(final GameState gameState, final DistanceManager distanceManager, final BehaviourManager behaviourManager)
     {
         Map<Integer, Planet> planets = gameState.getGameMap().getAllPlanets();
-
-        int numberOfAssassinationObjectives = behaviourManager.getNumberOfAssassinationObjectives();
 
         for(final Planet planet : planets.values())
         {
@@ -254,12 +261,10 @@ public class ObjectiveManager
                             Objective.OrderType.ASSASSINATION,
                             true,
                             true,
+                            false,
                             this.objectiveId++
                     );
                     superObjectives.add(objective);
-                    numberOfAssassinationObjectives--;
-                    if (numberOfAssassinationObjectives == 0)
-                        return;
                 }
             }
         }
@@ -281,6 +286,7 @@ public class ObjectiveManager
                         Objective.OrderType.LURE,
                         true,
                         false,
+                        true,
                         this.objectiveId++
                 );
                 this.superObjectives.add(objective);
@@ -298,6 +304,7 @@ public class ObjectiveManager
                     Objective.OrderType.LURE,
                     true,
                     false,
+                    true,
                     this.objectiveId++
             );
             this.superObjectives.add(objective);
@@ -318,6 +325,7 @@ public class ObjectiveManager
                     Objective.OrderType.FLEE,
                     true,
                     true,
+                    true,
                     this.objectiveId++
             );
             this.superObjectives.add(objective);
@@ -333,6 +341,7 @@ public class ObjectiveManager
             Objective.OrderType.HIDEINCORNER,
             true,
             false,
+            true,
             this.objectiveId++
         );
 

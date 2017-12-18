@@ -7,6 +7,7 @@ import hlt.*;
 import java.util.*;
 
 import static core.GameState.applyMoveToShip;
+import static core.NavigationManager.NavigationManager.attackCombatOperationMoves;
 import static core.Objective.OrderType.*;
 
 public class CombatManager
@@ -29,19 +30,13 @@ public class CombatManager
 
         ArrayList<Fleet> allFleets = gameState.getFleetManager().getFleetsToMove();
         ArrayList<Ship> allShips = gameState.getFleetManager().getShipsToMove();
-
         Set<Objective> objectives = new HashSet<>();
-
-        for (final Fleet fleet: allFleets)
-            objectives.add(fleet.getFirstObjectives());
-
-        for (final Ship ship: allShips)
-            objectives.add(ship.getObjective());
 
         HashMap<Objective, ArrayList<Ship>> objectivesToShips = new HashMap<>();
         for (final Ship ship: allShips)
         {
             Objective objective = ship.getObjective();
+            objectives.add(objective);
 
             if (!objectivesToShips.containsKey(objective))
                 objectivesToShips.put(objective, new ArrayList<>());
@@ -53,6 +48,7 @@ public class CombatManager
         for (final Fleet fleet: allFleets)
         {
             Objective objective = fleet.getFirstObjectives();
+            objectives.add(objective);
 
             if (!objectivesToFleets.containsKey(objective))
                 objectivesToFleets.put(objective, new ArrayList<>());
@@ -61,15 +57,7 @@ public class CombatManager
         }
 
         for (final Objective objective: objectives)
-        {
-            ArrayList<Ship> enemyShips = new ArrayList<>();
-            for(final Ship enemyShip: gameState.getEnemyShips())
-                if (enemyShip.getDistanceTo(objective.getTargetEntity()) <= 14.0)
-                    enemyShips.add(enemyShip);
-
-            CombatOperation combatOperation = new CombatOperation(objective, objectivesToShips.get(objective), objectivesToFleets.get(objective), enemyShips, this.combatOperationId++);
-            this.combatOperations.add(combatOperation);
-        }
+            this.combatOperations.add(new CombatOperation(objective, objectivesToShips.get(objective), objectivesToFleets.get(objective), this.combatOperationId++));
 
         logCombatOperations();
     }
@@ -78,7 +66,8 @@ public class CombatManager
     {
         ArrayList<CombatOperation> sortedCombatOperations = new ArrayList<>();
 
-        Objective.OrderType[] ordersPriority = new Objective.OrderType[]{ATTACK,
+        Objective.OrderType[] ordersPriority = new Objective.OrderType[]{
+                ATTACK,
                 ATTACKDOCKED,
                 ANTIRUSH,
                 ASSASSINATION,
@@ -102,24 +91,42 @@ public class CombatManager
         return sortedCombatOperations;
     }
 
-    private ArrayList<CombatOperation> findCombatOperationWithObjective(final Objective objective)
+    public CombatOperationMoves resolveCombat(final GameState gameState, final ArrayList<Fleet> myFleetsNearby, final ArrayList<Ship> myShipsNearby, final Entity target)
     {
-        ArrayList<CombatOperation> similarCombatOperations = new ArrayList<>();
+        ArrayList<Ship> enemyShips = new ArrayList<>();
+        ArrayList<Ship> alliedShips = new ArrayList<>();
+        ArrayList<Ship> allMyShips = new ArrayList<>();
 
-        for (final CombatOperation combatOperation: this.combatOperations)
+        for (final Fleet fleet: myFleetsNearby)
+            allMyShips.addAll(fleet.getShips());
+        allMyShips.addAll(myShipsNearby);
+
+        for (final Ship myShip: allMyShips)
         {
-            if (combatOperation.getObjective().equals(objective))
-                similarCombatOperations.add(combatOperation);
+            for(final Ship enemyShip: gameState.getEnemyShips())
+                if ((enemyShip.getDistanceTo(myShip) <= 14.0) && !(enemyShips.contains(enemyShip)))
+                    enemyShips.add(enemyShip);
+
+            for(final Ship allyShip: gameState.getMyShipsNextTurn())
+                if ((allyShip.getDistanceTo(myShip) <= 7.5) && !(allMyShips.contains(allyShip)))
+                    alliedShips.add(allyShip);
         }
 
-        return similarCombatOperations;
+        if (noUndockedEnemies(enemyShips))
+            return attackCombatOperationMoves(gameState, myFleetsNearby, myShipsNearby, target);
+
+        Future future = new Future(myFleetsNearby, myShipsNearby, allMyShips, alliedShips, enemyShips, target);
+        return future.generateFutureMoves(gameState);
     }
 
-//    public ArrayList<Move> resolveCombat(final CombatOperation combatOperation, final GameState gameState)
-//    {
-//        Future future = new Future(combatOperation.getSourceShip(), combatOperation.getMyShips(), combatOperation.getEnemyShips());
-//        return future.generateFutureMoves(gameState, combatOperation);
-//    }
+    private boolean noUndockedEnemies(final ArrayList<Ship> enemyShips)
+    {
+        for (final Ship ship: enemyShips)
+            if (ship.isUndocked())
+                return false;
+
+        return true;
+    }
 
     public static double combatBalance(final ArrayList<Ship> myShips, final ArrayList<Ship> enemyShips)
     {
@@ -341,13 +348,9 @@ public class CombatManager
 
     public static double scoreCombatOperationMove(final CombatOperation combatOperation, final CombatOperationMoves moves, final GameState gameState)
     {
-        ArrayList<Ship> enemyShips = combatOperation.getEnemyShips();
-
-        if (enemyShips.isEmpty())
-            return 1.0;
-
-        ArrayList<Ship> myShips = combatOperation.getMyShips();
-        ArrayList<Fleet> myFleets = combatOperation.getMyFleets();
+        ArrayList<Ship> enemyShips = new ArrayList<>();
+        ArrayList<Ship> myShips = combatOperation.getMyActiveShips();
+        ArrayList<Fleet> myFleets = combatOperation.getMyActiveFleets();
 
         ArrayList<Ship> myShipsNextTurn = new ArrayList<>();
 
@@ -371,6 +374,9 @@ public class CombatManager
                 if ((allyShip.getDistanceTo(myShip) <= 7.5) && !(myShipsNextTurn.contains(allyShip)))
                     closeAllyShips.add(allyShip);
         }
+
+        if (enemyShips.isEmpty())
+            return 1.0;
 
         myShipsNextTurn.addAll(closeAllyShips);
 

@@ -48,9 +48,7 @@ public class Node<T>
 
     public void setParent(Node<T> parent) { this.parent = parent; }
     public void addToParents(Node<T> parent) { this.parents.addFirst(parent); }
-    public void setDepth(int depth) { this.depth = depth; }
     public void setScore(double score) { this.score = score; }
-    public void setMaxPlayer(boolean maxPlayer) { isMaxPlayer = maxPlayer; }
 
     public void addNodeToChildren(final T data, final boolean isMaxPlayer, final int depth, final double score)
     {
@@ -62,11 +60,10 @@ public class Node<T>
     @Override
     public String toString()
     {
-        return "Node[" +
-                "data=" + data.toString() +
-                ", op=" + (isMaxPlayer? "Max" : "Min") +
-                ", score=" + String.format("%.2f", score) +
+        return "Node(" + String.format("%.2f", score) + ")[" +
+                "op=" + (isMaxPlayer? "Max" : "Min") +
                 ", depth=" + depth +
+                ", data=" + data.toString() +
                 ", children=" + children.size() +
                 "]";
     }

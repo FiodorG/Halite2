@@ -7,28 +7,27 @@ import java.util.ArrayList;
 
 public class Event
 {
-    final private EventType eventType;
-    final private ArrayList<Ship> sourceShips;
-    final private Entity targetEntity;
+    private final EventType eventType;
+    private final Entity sourceEntity;
+    private final Entity targetEntity;
 
-    public Event(final EventType eventType, final ArrayList<Ship> sourceShips, final Entity targetEntity)
+    public Event(final EventType eventType, final Entity sourceEntity, final Entity targetEntity)
     {
         this.eventType = eventType;
-        this.sourceShips = sourceShips;
+        this.sourceEntity = sourceEntity;
         this.targetEntity = targetEntity;
     }
 
-    public ArrayList<Ship> getSourceEntity() { return sourceShips; }
+    public Entity getSourceEntity() { return sourceEntity; }
     public Entity getTargetEntity() { return targetEntity; }
     public EventType getEventType() { return eventType; }
-
 
     @Override
     public String toString()
     {
         return "Event<" +
                 "type=" + eventType +
-                ", Allies(" + sourceShips.toString() + ")" +
+                ", Allies(" + sourceEntity.toString() + ")" +
                 ", Target(" + targetEntity.toString() + ")" +
                 ">";
     }

@@ -6,6 +6,7 @@ import core.CombatManager.CombatOperation;
 import hlt.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class NavigationManager
@@ -88,16 +89,16 @@ public class NavigationManager
     {
         ArrayList<Fleet> myFleetsFar = new ArrayList<>();
         ArrayList<Fleet> myFleetsNearby = new ArrayList<>();
-        for (final Fleet fleet: combatOperation.getMyFleets())
-            if (fleet.getCentroid().getDistanceTo(target) < 20.0)
+        for (final Fleet fleet: combatOperation.getMyActiveFleets())
+            if (fleet.getCentroid().getDistanceTo(target) < 14.0)
                 myFleetsNearby.add(fleet);
             else
                 myFleetsFar.add(fleet);
 
         ArrayList<Ship> myShipsFar = new ArrayList<>();
         ArrayList<Ship> myShipsNearby = new ArrayList<>();
-        for (final Ship ship: combatOperation.getMyShips())
-            if (ship.getDistanceTo(target) < 20.0)
+        for (final Ship ship: combatOperation.getMyActiveShips())
+            if (ship.getDistanceTo(target) < 14.0)
                 myShipsNearby.add(ship);
             else
                 myShipsFar.add(ship);
@@ -120,26 +121,20 @@ public class NavigationManager
         if (myFleetsNearby.isEmpty() && myShipsNearby.isEmpty())
             return new CombatOperationMoves();
 
-        // Attack
-        HashMap<Fleet, ArrayList<Move>> fleetMovesAttack = new HashMap<>();
-        for (final Fleet fleet: myFleetsNearby)
-            fleetMovesAttack.put(fleet, Navigation.navigateFleetToAttack(gameState, fleet, target));
+        if (myFleetsNearby.size() + myShipsNearby.size() < 4)
+            return gameState.getCombatManager().resolveCombat(gameState, myFleetsNearby, myShipsNearby, target);
 
-        HashMap<Ship, Move> shipMovesAttack = new HashMap<>();
-        for (final Ship ship: myShipsNearby)
-            shipMovesAttack.put(ship, Navigation.navigateShipToAttack(gameState, ship, target));
-
-        CombatOperationMoves attackMoves = new CombatOperationMoves(fleetMovesAttack, shipMovesAttack);
+        CombatOperationMoves attackMoves = attackCombatOperationMoves(gameState, myFleetsNearby, myShipsNearby, target);
         double attackScore = CombatManager.scoreCombatOperationMove(combatOperation, attackMoves, gameState);
 
         // Retreat towards Allied
         HashMap<Fleet, ArrayList<Move>> fleetMovesRetreatTowardsAllies = new HashMap<>();
         for (final Fleet fleet: myFleetsNearby)
-            fleetMovesRetreatTowardsAllies.put(fleet, Navigation.navigateFleetToAttack(gameState, fleet, gameState.getDistanceManager().getClosestAllyShipFromFleet(fleet)));
+            fleetMovesRetreatTowardsAllies.put(fleet, Navigation.navigateFleetToAttack(gameState, fleet, gameState.getDistanceManager().getClosestAllyShipFromCombatOperation(fleet.getCentroid(), myFleetsNearby, myShipsNearby)));
 
         HashMap<Ship, Move> shipMovesRetreatTowardsAllies = new HashMap<>();
         for (final Ship ship: myShipsNearby)
-            shipMovesRetreatTowardsAllies.put(ship, Navigation.navigateShipToAttack(gameState, ship, gameState.getDistanceManager().getClosestAllyShip(ship)));
+            shipMovesRetreatTowardsAllies.put(ship, Navigation.navigateShipToAttack(gameState, ship, gameState.getDistanceManager().getClosestAllyShipFromCombatOperation(ship, myFleetsNearby, myShipsNearby)));
 
         CombatOperationMoves retreatTowardAllyMoves = new CombatOperationMoves(fleetMovesRetreatTowardsAllies, shipMovesRetreatTowardsAllies);
         double retreatTowardAllyScore = CombatManager.scoreCombatOperationMove(combatOperation, retreatTowardAllyMoves, gameState);
@@ -175,6 +170,19 @@ public class NavigationManager
         return possibleMoves.get(indexOfBestMove);
     }
 
+    public static CombatOperationMoves attackCombatOperationMoves(final GameState gameState, final ArrayList<Fleet> myFleetsNearby, final ArrayList<Ship> myShipsNearby, final Entity target)
+    {
+        HashMap<Fleet, ArrayList<Move>> fleetMovesAttack = new HashMap<>();
+        for (final Fleet fleet: myFleetsNearby)
+            fleetMovesAttack.put(fleet, Navigation.navigateFleetToAttack(gameState, fleet, target));
+
+        HashMap<Ship, Move> shipMovesAttack = new HashMap<>();
+        for (final Ship ship: myShipsNearby)
+            shipMovesAttack.put(ship, Navigation.navigateShipToAttack(gameState, ship, target));
+
+        return new CombatOperationMoves(fleetMovesAttack, shipMovesAttack);
+    }
+
     private void addCombatOperationMovesForFarFleets(final GameState gameState, final CombatOperationMoves combatOperationMoves, final Entity target, final ArrayList<Fleet> myFleetsFar)
     {
         for (final Fleet fleet: myFleetsFar)
@@ -190,11 +198,11 @@ public class NavigationManager
     private CombatOperationMoves moveCombatOperationToObjectiveDefend(final GameState gameState, final CombatOperation combatOperation, final Entity target)
     {
         HashMap<Fleet, ArrayList<Move>> fleetMoves = new HashMap<>();
-        for (final Fleet fleet: combatOperation.getMyFleets())
+        for (final Fleet fleet: combatOperation.getMyActiveFleets())
             fleetMoves.put(fleet, Navigation.navigateFleetToDefend(gameState, fleet, target));
 
         HashMap<Ship, Move> shipMoves = new HashMap<>();
-        for (final Ship ship: combatOperation.getMyShips())
+        for (final Ship ship: combatOperation.getMyActiveShips())
             shipMoves.put(ship, Navigation.navigateShipToMove(gameState, ship, target));
 
         return new CombatOperationMoves(fleetMoves, shipMoves);
@@ -202,11 +210,11 @@ public class NavigationManager
 
     private CombatOperationMoves moveCombatOperationToObjectiveColonize(final GameState gameState, final CombatOperation combatOperation, final Entity target)
     {
-        if (!combatOperation.getMyFleets().isEmpty())
+        if (!combatOperation.getMyActiveFleets().isEmpty())
             throw new IllegalStateException("Fleets cannot colonize.");
 
         HashMap<Ship, Move> shipMoves = new HashMap<>();
-        for (final Ship ship: combatOperation.getMyShips())
+        for (final Ship ship: combatOperation.getMyActiveShips())
             shipMoves.put(ship, moveShipToObjectiveColonize(gameState, ship, target));
 
         return new CombatOperationMoves(new HashMap<>(), shipMoves);
@@ -215,11 +223,11 @@ public class NavigationManager
     private CombatOperationMoves moveCombatOperationToObjectiveGroup(final GameState gameState, final CombatOperation combatOperation, final Entity target)
     {
         HashMap<Fleet, ArrayList<Move>> fleetMoves = new HashMap<>();
-        for (final Fleet fleet: combatOperation.getMyFleets())
+        for (final Fleet fleet: combatOperation.getMyActiveFleets())
             fleetMoves.put(fleet, moveFleetToObjectiveGroup(gameState, fleet));
 
         HashMap<Ship, Move> shipMoves = new HashMap<>();
-        for (final Ship ship: combatOperation.getMyShips())
+        for (final Ship ship: combatOperation.getMyActiveShips())
             shipMoves.put(ship, moveShipToObjectiveGroup(gameState, ship, target));
 
         return new CombatOperationMoves(fleetMoves, shipMoves);
@@ -228,11 +236,11 @@ public class NavigationManager
     private CombatOperationMoves moveCombatOperationToObjectiveAssassination(final GameState gameState, final CombatOperation combatOperation, final Entity target)
     {
         HashMap<Fleet, ArrayList<Move>> fleetMoves = new HashMap<>();
-        for (final Fleet fleet: combatOperation.getMyFleets())
+        for (final Fleet fleet: combatOperation.getMyActiveFleets())
             fleetMoves.put(fleet, moveFleetToObjectiveAssassination(gameState, fleet, target));
 
         HashMap<Ship, Move> shipMoves = new HashMap<>();
-        for (final Ship ship: combatOperation.getMyShips())
+        for (final Ship ship: combatOperation.getMyActiveShips())
             shipMoves.put(ship, moveShipToObjectiveAssassination(gameState, ship, target));
 
         return new CombatOperationMoves(fleetMoves, shipMoves);
@@ -241,11 +249,11 @@ public class NavigationManager
     private CombatOperationMoves moveCombatOperationToObjectiveFlee(final GameState gameState, final CombatOperation combatOperation, final Entity target)
     {
         HashMap<Fleet, ArrayList<Move>> fleetMoves = new HashMap<>();
-        for (final Fleet fleet: combatOperation.getMyFleets())
+        for (final Fleet fleet: combatOperation.getMyActiveFleets())
             fleetMoves.put(fleet, moveFleetToObjectiveFlee(gameState, fleet, target));
 
         HashMap<Ship, Move> shipMoves = new HashMap<>();
-        for (final Ship ship: combatOperation.getMyShips())
+        for (final Ship ship: combatOperation.getMyActiveShips())
             shipMoves.put(ship, moveShipToObjectiveFlee(gameState, ship, target));
 
         return new CombatOperationMoves(fleetMoves, shipMoves);
@@ -253,11 +261,11 @@ public class NavigationManager
 
     private CombatOperationMoves undockCombatOperation(final GameState gameState, final CombatOperation combatOperation)
     {
-        if (!combatOperation.getMyFleets().isEmpty())
+        if (!combatOperation.getMyActiveFleets().isEmpty())
             throw new IllegalStateException("Fleets cannot colonize.");
 
         HashMap<Ship, Move> shipMoves = new HashMap<>();
-        for (final Ship ship: combatOperation.getMyShips())
+        for (final Ship ship: combatOperation.getMyActiveShips())
             shipMoves.put(ship, moveShipUndock(gameState, ship));
 
         return new CombatOperationMoves(new HashMap<>(), shipMoves);
@@ -265,7 +273,7 @@ public class NavigationManager
 
     private void addCombatOperationMoves(final GameState gameState, final CombatOperation combatOperation, final CombatOperationMoves combatOperationMoves)
     {
-        for (final Fleet fleet: combatOperation.getMyFleets())
+        for (final Fleet fleet: combatOperation.getMyActiveFleets())
         {
             ArrayList<Move> newMoves = combatOperationMoves.getFleetMoves().get(fleet);
             this.moves.addAll(newMoves);
@@ -273,7 +281,7 @@ public class NavigationManager
             gameState.moveFleet(fleet, newMoves);
         }
 
-        for (final Ship ship: combatOperation.getMyShips())
+        for (final Ship ship: combatOperation.getMyActiveShips())
         {
             Move newMove = combatOperationMoves.getShipMoves().get(ship);
             this.moves.add(newMove);
@@ -327,27 +335,33 @@ public class NavigationManager
 
     private ArrayList<Move> moveFleetToObjectiveAttack(final GameState gameState, final Fleet fleet, final Entity target)
     {
-//        if (gameState.getBehaviourManager().getTestArgument() == 2)
-//        {
-//            CombatOperation combatOperation = gameState.getCombatManager().createCombatOperationForFleet(fleet, gameState, target);
-//
-//            if (combatOperation.getEnemyShips().isEmpty())
-//                return Navigation.navigateFleetToAttack(gameState, fleet, target);
-//
-//            return gameState.getCombatManager().resolveCombat(combatOperation, gameState);
-//        }
-//        else
-//        {
+        if (gameState.getBehaviourManager().getTestArgument() == 2)
+        {
+            CombatOperationMoves combatOperationMoves = gameState.getCombatManager().resolveCombat(gameState, new ArrayList<>(Arrays.asList(fleet)), new ArrayList<>(), target);
+            return combatOperationMoves.getFleetMoves().get(fleet);
+        }
+        else
+        {
             ArrayList<Move> newMoves = Navigation.navigateFleetToAttack(gameState, fleet, target);
             double newMovesScore = CombatManager.scoreFleetMove(fleet, (Ship) target, newMoves, gameState);
 
             ArrayList<Move> retreatTowardsAllyMoves = Navigation.navigateFleetToAttack(gameState, fleet, gameState.getDistanceManager().getClosestAllyShipFromFleet(fleet));
             double retreatTowardsAllyMovesScore = CombatManager.scoreFleetMove(fleet, (Ship) target, retreatTowardsAllyMoves, gameState);
 
-            Entity retreatDirection = retreatDirection(gameState, fleet.getCentroid());
-            int retreatThrust = NavigationManager.retreatThrust(gameState, fleet.getCentroid(), retreatDirection);
-            ArrayList<Move> retreatMoves = Navigation.navigateFleetToAttackWithThrust(gameState, fleet, retreatDirection, retreatThrust, 5.0);
-            double retreatMovesScore = CombatManager.scoreFleetMove(fleet, (Ship) target, retreatMoves, gameState);
+            ArrayList<Move> retreatMoves;
+            double retreatMovesScore;
+            if (fleet.getShips().size() < 4)
+            {
+                Entity retreatDirection = retreatDirection(gameState, fleet.getCentroid());
+                int retreatThrust = NavigationManager.retreatThrust(gameState, fleet.getCentroid(), retreatDirection);
+                retreatMoves = Navigation.navigateFleetToAttackWithThrust(gameState, fleet, retreatDirection, retreatThrust, 5.0);
+                retreatMovesScore = CombatManager.scoreFleetMove(fleet, (Ship) target, retreatMoves, gameState);
+            }
+            else
+            {
+                retreatMoves = new ArrayList<>();
+                retreatMovesScore = -999;
+            }
 
             double[] scores = new double[]{newMovesScore, retreatTowardsAllyMovesScore, retreatMovesScore};
             ArrayList<ArrayList<Move>> possibleMoves = new ArrayList<>();
@@ -357,7 +371,7 @@ public class NavigationManager
 
             int indexOfBestMove = getIndexOfLargest(scores);
             return possibleMoves.get(indexOfBestMove);
-//        }
+        }
     }
 
     private ArrayList<Move> moveFleetToObjectiveAssassination(final GameState gameState, final Fleet fleet, final Entity target)
@@ -473,21 +487,13 @@ public class NavigationManager
 
     private Move moveShipToObjectiveAttack(final GameState gameState, final Ship ship, final Entity target)
     {
-//        if (gameState.getBehaviourManager().getTestArgument() == 2)
-//        {
-//            CombatOperation combatOperation = gameState.getCombatManager().createCombatOperationForShip(ship, gameState, target);
-//
-//            if (combatOperation.getEnemyShips().isEmpty())
-//                return Navigation.navigateShipToAttack(gameState, ship, target);
-//
-//            if (combatOperation.getMyShips().size() > 1)
-//                return Navigation.navigateShipToAttack(gameState, ship, target);
-//
-//            ArrayList<Move> moves = gameState.getCombatManager().resolveCombat(combatOperation, gameState);
-//            return moves.get(0);
-//        }
-//        else
-//        {
+        if (gameState.getBehaviourManager().getTestArgument() == 2)
+        {
+            CombatOperationMoves combatOperationMoves = gameState.getCombatManager().resolveCombat(gameState, new ArrayList<>(), new ArrayList<>(Arrays.asList(ship)), target);
+            return combatOperationMoves.getShipMoves().get(ship);
+        }
+        else
+        {
             Move newMove = Navigation.navigateShipToAttack(gameState, ship, target);
             double newMoveScore = CombatManager.scoreShipMove(ship, (Ship) target, (ThrustMove) newMove, gameState);
 
@@ -504,7 +510,7 @@ public class NavigationManager
 
             int indexOfBestMove = getIndexOfLargest(scores);
             return possibleMoves[indexOfBestMove];
-//        }
+        }
     }
 
     private Move moveShipToObjectiveAssassination(final GameState gameState, final Ship ship, final Entity target)

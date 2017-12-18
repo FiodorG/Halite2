@@ -10,7 +10,7 @@ public class MyBotRush
         gameDefinitions.put("testArgument",             1);         // Argument to quickly test new features
 
         gameDefinitions.put("maxPriority",              100.0);     // Higher bound of priorities (except special ones)
-        gameDefinitions.put("distanceDiscountExponent", 2.0);       // Power exponent to discount by distance
+        gameDefinitions.put("distanceDiscountExponent", 2.5);       // Power exponent to discount by distance
 
         gameDefinitions.put("colonizationTurns",        50);        // Prioritize colonization during first n turns
         gameDefinitions.put("colonizationBump",         50.0);      // Priority Bump when colonization phase

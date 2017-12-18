@@ -62,6 +62,7 @@ public class Navigation
 
         // No need to look at objects too far away
         Position newTargetPosition = targetPosition;
+
         if (ship.getDistanceTo(newTargetPosition) > 14.0)
             newTargetPosition = newTargetPosition.getClosestPoint(ship, 14.0);
 
@@ -100,6 +101,11 @@ public class Navigation
     public static ArrayList<Move> navigateFleetToDefend(final GameState gameState, final Fleet fleet, final Entity defendTarget)
     {
         return navigateFleetToAttackWithThrust(gameState, fleet, defendTarget, Constants.MAX_SPEED, 4.5);
+    }
+
+    public static ArrayList<Move> navigateFleetToMove(final GameState gameState, final Fleet fleet, final Entity defendTarget)
+    {
+        return navigateFleetToAttackWithThrust(gameState, fleet, defendTarget, Constants.MAX_SPEED, 4.2);
     }
 
     public static ArrayList<Move> navigateFleetToAttackWithThrust(final GameState gameState, final Fleet fleet, final Entity attackTarget, final int thrust, final double priority)

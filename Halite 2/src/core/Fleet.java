@@ -23,8 +23,6 @@ public class Fleet extends Entity
     {
         return reinforcementNeed;
     }
-
-    public void addObjective(final Objective objective) { this.objectives.add(objective); }
     public void setObjective(final Objective objective) { this.objectives.clear(); this.objectives.add(objective); }
 
     public Fleet(final Ship ship, final Objective objective, final int id)

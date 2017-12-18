@@ -8,6 +8,8 @@ import hlt.Ship;
 
 import java.util.*;
 
+import static hlt.Constants.MAX_SPEED;
+
 public class GameGrid
 {
     private Matrix hitMap;
@@ -22,7 +24,7 @@ public class GameGrid
 
     public GameGrid(final GameState gameState)
     {
-        this.hitMap = new Matrix((int)Math.ceil(gameState.getMapSizeX() / gridUnit), (int)Math.ceil(gameState.getMapSizeY() / gridUnit), 0.0);
+        this.hitMap = new Matrix((int)Math.ceil(gameState.getMapSizeX() / gridUnit), (int)Math.ceil(gameState.getMapSizeY() / gridUnit), gridUnit / MAX_SPEED);
         this.numberOfRows = this.hitMap.getRowDimension();
         this.numberOfCols = this.hitMap.getColumnDimension();
 
@@ -43,31 +45,31 @@ public class GameGrid
             this.hitMap.set(index_row, index_col, previousValue + 64.0);
 
             // above and below
-            if (index_row > 0)
-                this.hitMap.set(index_row - 1, index_col, previousValue + 32.0);
-
-            if (index_row < numberOfRows - 1)
-                this.hitMap.set(index_row + 1, index_col, previousValue + 32.0);
-
-            // Left
-            if ((index_row < numberOfRows - 1) && (index_col > 0))
-                this.hitMap.set(index_row + 1, index_col - 1, previousValue + 32.0);
-
-            if ((index_row > 0) && (index_col > 0))
-                this.hitMap.set(index_row - 1, index_col - 1, previousValue + 32.0);
-
-            if (index_col > 0)
-                this.hitMap.set(index_row, index_col - 1, previousValue + 32.0);
-
-            // Right
-            if ((index_row < numberOfRows - 1) && (index_col < numberOfCols - 1))
-                this.hitMap.set(index_row + 1, index_col + 1, previousValue + 32.0);
-
-            if ((index_row > 0) && (index_col < numberOfCols - 1))
-                this.hitMap.set(index_row - 1, index_col + 1, previousValue + 32.0);
-
-            if (index_col < numberOfCols - 1)
-                this.hitMap.set(index_row, index_col + 1, previousValue + 32.0);
+//            if (index_row > 0)
+//                this.hitMap.set(index_row - 1, index_col, previousValue + 32.0);
+//
+//            if (index_row < numberOfRows - 1)
+//                this.hitMap.set(index_row + 1, index_col, previousValue + 32.0);
+//
+//            // Left
+//            if ((index_row < numberOfRows - 1) && (index_col > 0))
+//                this.hitMap.set(index_row + 1, index_col - 1, previousValue + 32.0);
+//
+//            if ((index_row > 0) && (index_col > 0))
+//                this.hitMap.set(index_row - 1, index_col - 1, previousValue + 32.0);
+//
+//            if (index_col > 0)
+//                this.hitMap.set(index_row, index_col - 1, previousValue + 32.0);
+//
+//            // Right
+//            if ((index_row < numberOfRows - 1) && (index_col < numberOfCols - 1))
+//                this.hitMap.set(index_row + 1, index_col + 1, previousValue + 32.0);
+//
+//            if ((index_row > 0) && (index_col < numberOfCols - 1))
+//                this.hitMap.set(index_row - 1, index_col + 1, previousValue + 32.0);
+//
+//            if (index_col < numberOfCols - 1)
+//                this.hitMap.set(index_row, index_col + 1, previousValue + 32.0);
         }
     }
 
