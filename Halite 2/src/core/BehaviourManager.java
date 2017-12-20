@@ -138,8 +138,8 @@ public class BehaviourManager
             return 0.0;
         else
         {
-//            if(gameState.getDistanceManager().getEnemiesCloserThan(targetPlanet, 50.0).size() - targetPlanet.getDockedShips().size() < 5)
-            if(targetPlanet.getDockedShips().size() >= 4)
+//            if ((gameState.getDistanceManager().getEnemiesCloserThan(targetPlanet, 40.0).size() - targetPlanet.getDockedShips().size() < 5)
+            if (targetPlanet.getDockedShips().size() >= 3)
                 return assassinationPriority;
             else
                 return 0.0;
@@ -330,6 +330,17 @@ public class BehaviourManager
 
     public int getRequiredShipsForAttack(final GameState gameState, final DistanceManager distanceManager, final Ship targetShip)
     {
-        return 3;
+        if (gameState.getNumberOfPlayers() == 2)
+            return 8;
+        else
+            return 5;
+    }
+
+    public int getNumberOfClosestObjectives(final GameState gameState)
+    {
+        if (gameState.getNumberOfPlayers() == 2)
+            return 4;
+        else
+            return 5;
     }
 }

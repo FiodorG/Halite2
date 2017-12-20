@@ -2,71 +2,83 @@ package core.CombatManager;
 
 import core.Fleet;
 import core.GameState;
+import core.NavigationManager.CombatOperationMoves;
 import core.NavigationManager.NavigationManager;
 import hlt.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.*;
 
 import static core.CombatManager.EventType.RETREAT;
 import static core.GameState.applyMoveToShip;
+import static core.NavigationManager.NavigationManager.retreatDirection;
 
 public class Future
 {
     final private int maxDepth;
 
-    final private Entity sourceEntity;
-    final private ArrayList<Ship> myActiveShips;
-    final private ArrayList<Ship> myDockedShips;
-    final private ArrayList<Ship> enemyActiveShips;
-    final private ArrayList<Ship> enemyDockedShips;
+    private ArrayList<Fleet> myFleets;
+    private ArrayList<Ship> myShips;
+
+    private ArrayList<Ship> alliedShipsActive;
+    private ArrayList<Ship> alliedShipsDocked;
+    private ArrayList<Ship> enemyShipsActive;
+    private ArrayList<Ship> enemyShipsDocked;
+
+    private Entity targetEntity;
+
+    // Helpers
+    private ArrayList<Entity> myEntities;
+    private ArrayList<Ship> allMyShipsActive;
+    private Fleet enemyShipsFleet;
 
     private Node<Event> futurePossibilities;
 
-    public Future(final Entity sourceEntity, final ArrayList<Ship> myShips, final ArrayList<Ship> enemyShips)
+    public Future(final ArrayList<Fleet> myFleets, final ArrayList<Ship> myShips, final ArrayList<Ship> allMyShips, final ArrayList<Ship> alliedShips, final ArrayList<Ship> enemyShips, final Entity target)
     {
-        this.maxDepth = 2;
         this.futurePossibilities = new Node<>(null, null, new LinkedList<>(), new ArrayList<>(), true, 0, 0);
 
-        this.sourceEntity = sourceEntity;
-        this.myActiveShips = new ArrayList<>();
-        this.myDockedShips = new ArrayList<>();
-        for (final Ship ship: myShips)
-            if (ship.isUndocked())
-                myActiveShips.add(ship);
-            else
-                myDockedShips.add(ship);
+        this.myFleets = myFleets;
+        this.myShips = myShips;
 
-        this.enemyActiveShips = new ArrayList<>();
-        this.enemyDockedShips = new ArrayList<>();
+        this.alliedShipsActive = new ArrayList<>();
+        this.alliedShipsDocked = new ArrayList<>();
+        for (final Ship ship: alliedShips)
+            if (ship.isUndocked())
+                alliedShipsActive.add(ship);
+            else
+                alliedShipsDocked.add(ship);
+
+        this.enemyShipsActive = new ArrayList<>();
+        this.enemyShipsDocked = new ArrayList<>();
         for (final Ship ship: enemyShips)
             if (ship.isUndocked())
-                enemyActiveShips.add(ship);
+                enemyShipsActive.add(ship);
             else
-                enemyDockedShips.add(ship);
+                enemyShipsDocked.add(ship);
+
+        this.targetEntity = target;
+
+        this.allMyShipsActive = allMyShips;
+        this.allMyShipsActive.addAll(alliedShipsActive);
+
+        this.myEntities = new ArrayList<>();
+        this.myEntities.addAll(myFleets);
+        this.myEntities.addAll(myShips);
+
+        // One move per my entities plus enemy's turn.
+//        this.maxDepth = this.myEntities.size() + enemyShipsActive.size();
+        this.maxDepth = this.myEntities.size() + 1;
+
+        this.enemyShipsFleet = new Fleet(this.enemyShipsActive, new ArrayList<>(), -965);
     }
 
-//    public ArrayList<Move> generateFutureMoves(final GameState gameState, final CombatOperation combatOperation)
-//    {
-//        final Node<Event> chosenFuture = alphaBetaPruning(gameState, this.futurePossibilities, -Double.MAX_VALUE, Double.MAX_VALUE);
-//        //final Node<Event> chosenFuture = miniMax(gameState, this.futurePossibilities);
-//
-//        Node chosenNode = chosenFuture.getParents().getLast();
-//        Event event = (Event)chosenNode.getData();
-//        ArrayList<Ship> sourceShips = event.getSourceEntity();
-//
-//        if (sourceShips.size() == 1)
-//        {
-//            Move move = generateMoves(gameState, event.getEventType(), sourceShips.get(0), event.getTargetEntity());
-//            ArrayList<Move> moves = new ArrayList<>();
-//            moves.add(move);
-//            return moves;
-//        }
-//        else
-//            return generateMovesForFleet(gameState, event.getEventType(), (Fleet)combatOperation.getSourceShip(), event.getTargetEntity());
-//    }
+    public CombatOperationMoves generateFutureMoves(final GameState gameState)
+    {
+        final Node<Event> chosenFuture = alphaBetaPruning(gameState, this.futurePossibilities, -Double.MAX_VALUE, Double.MAX_VALUE);
+        //final Node<Event> chosenFuture = miniMax(gameState, this.futurePossibilities);
+
+        return generateMovesForFleet(gameState, chosenFuture.getParents());
+    }
 
     private Node miniMax(final GameState gameState, final Node parentNode)
     {
@@ -129,7 +141,7 @@ public class Future
         }
 
         Node childNode;
-        Node bestNode = null;
+        Node bestNode = childrenNodes.get(0);
         if (parentNode.isMaxPlayer())
         {
             for (final Node node: childrenNodes)
@@ -172,62 +184,48 @@ public class Future
 
     private ArrayList<Node<Event>> getChildren(final GameState gameState, final Node<Event> parentNode)
     {
-        if (parentNode.getDepth() == this.maxDepth)
-            return new ArrayList<>();
-
-        if (parentNode.isMaxPlayer())
+        Entity sourceEntity;
+        if (parentNode.getDepth() < this.myEntities.size())
         {
-            // Generate moves for all of my ships
-            getChildrenForTargetShip(parentNode, this.enemyActiveShips, this.sourceEntity);
-            getChildrenForTargetShip(parentNode, this.enemyDockedShips, this.sourceEntity);
-            getChildrenForTargetShip(parentNode, this.myDockedShips, this.sourceEntity);
-            getChildrenForGroup(parentNode, this.myActiveShips, this.sourceEntity);
-            getChildrenForRetreatShip(parentNode, this.sourceEntity);
+            sourceEntity = this.myEntities.get(parentNode.getDepth());
+            boolean isMaxPlayer = (parentNode.getDepth() != this.myEntities.size() - 1);
+
+            getChildrenForTargetShip(parentNode, this.enemyShipsActive, sourceEntity, isMaxPlayer);
+            getChildrenForTargetShip(parentNode, this.enemyShipsDocked, sourceEntity, isMaxPlayer);
+            getChildrenForTargetShip(parentNode, this.alliedShipsDocked, sourceEntity, isMaxPlayer);
+            getChildrenForGroup2(parentNode, this.myEntities, sourceEntity, isMaxPlayer);
+            getChildrenForRetreatShip(parentNode, sourceEntity, isMaxPlayer);
+
+            return parentNode.getChildren();
+        }
+        else if (parentNode.getDepth() < this.maxDepth)
+        {
+            sourceEntity = this.enemyShipsFleet;
+//            sourceEntity = this.enemyShipsActive.get(parentNode.getDepth() - this.myEntities.size());
+
+            getChildrenForTargetShip(parentNode, this.allMyShipsActive, sourceEntity, false);
+            getChildrenForTargetShip(parentNode, this.alliedShipsDocked, sourceEntity, false);
+            getChildrenForTargetShip(parentNode, this.enemyShipsDocked, sourceEntity, false);
+            getChildrenForGroup(parentNode, this.enemyShipsActive, sourceEntity, false);
+            getChildrenForRetreatShip(parentNode, sourceEntity, false);
+
+            return parentNode.getChildren();
         }
         else
-        {
-            // Generate moves for enemy ships
-            getChildrenForTargetShips(parentNode, this.myActiveShips, this.enemyActiveShips);
-            getChildrenForTargetShips(parentNode, this.myDockedShips, this.enemyActiveShips);
-            getChildrenForTargetShips(parentNode, this.enemyDockedShips, this.enemyActiveShips);
-            getChildrenForRetreatShips(parentNode, this.enemyActiveShips);
-        }
-
-        return parentNode.getChildren();
+            return new ArrayList<>();
     }
 
-    private void getChildrenForTargetShip(final Node<Event> parentNode, final ArrayList<Ship> targetShips, final Entity sourceEntity)
+    private void getChildrenForTargetShip(final Node<Event> parentNode, final ArrayList<Ship> targetShips, final Entity sourceEntity, final Boolean isMaxPlayer)
     {
         for(final Ship targetShip: targetShips)
         {
             EventType eventType = generateEventTypeForShip(sourceEntity, targetShip);
-
-            Event event;
-            if (sourceEntity instanceof Ship)
-                event = new Event(eventType, new ArrayList<>(Arrays.asList((Ship)sourceEntity)), targetShip);
-            else if (sourceEntity instanceof Fleet)
-                event = new Event(eventType, ((Fleet)sourceEntity).getShips(), targetShip);
-            else
-                throw new IllegalStateException("SourceEntity can only be either ship or fleet.");
-
-            parentNode.addNodeToChildren(event, !parentNode.isMaxPlayer(), parentNode.getDepth() + 1, 0);
+            Event event = new Event(eventType, sourceEntity, targetShip);
+            parentNode.addNodeToChildren(event, isMaxPlayer, parentNode.getDepth() + 1, 0);
         }
     }
 
-    private void getChildrenForTargetShips(final Node<Event> parentNode, final ArrayList<Ship> targetShips, final ArrayList<Ship> sourceShips)
-    {
-        if (sourceShips.isEmpty())
-            return;
-
-        for(final Ship targetShip: targetShips)
-        {
-            EventType eventType = generateEventTypeForShips(sourceShips, targetShip);
-            Event event = new Event(eventType, sourceShips, targetShip);
-            parentNode.addNodeToChildren(event, !parentNode.isMaxPlayer(), parentNode.getDepth() + 1, 0);
-        }
-    }
-
-    private void getChildrenForGroup(final Node<Event> parentNode, final ArrayList<Ship> myActiveShips, final Entity sourceEntity)
+    private void getChildrenForGroup(final Node<Event> parentNode, final ArrayList<Ship> myActiveShips, final Entity sourceEntity, final Boolean isMaxPlayer)
     {
         for(final Ship targetShip: myActiveShips)
         {
@@ -242,51 +240,73 @@ public class Future
                     continue;
             }
 
-            Event event;
-            if (sourceEntity instanceof Ship)
-                event = new Event(EventType.GROUP, new ArrayList<>(Arrays.asList((Ship)sourceEntity)), targetShip);
-            else if (sourceEntity instanceof Fleet)
-                event = new Event(EventType.GROUP, ((Fleet)sourceEntity).getShips(), targetShip);
-            else
-                throw new IllegalStateException("SourceEntity can only be either ship or fleet.");
-
-            parentNode.addNodeToChildren(event, !parentNode.isMaxPlayer(), parentNode.getDepth() + 1, 0);
+            Event event = new Event(EventType.GROUP, sourceEntity, targetShip);
+            parentNode.addNodeToChildren(event, isMaxPlayer, parentNode.getDepth() + 1, 0);
         }
     }
 
-    private void getChildrenForRetreatShip(final Node<Event> parentNode, final Entity sourceEntity)
+    private void getChildrenForGroup2(final Node<Event> parentNode, final ArrayList<Entity> myActiveShips, final Entity sourceEntity, final Boolean isMaxPlayer)
     {
-        Event event;
-        if (sourceEntity instanceof Ship)
-            event = new Event(EventType.RETREAT, new ArrayList<>(Arrays.asList((Ship)sourceEntity)), sourceEntity);
-        else if (sourceEntity instanceof Fleet)
-            event = new Event(EventType.RETREAT, ((Fleet)sourceEntity).getShips(), sourceEntity);
-        else
-            throw new IllegalStateException("SourceEntity can only be either ship or fleet.");
-
-        parentNode.addNodeToChildren(event, !parentNode.isMaxPlayer(), parentNode.getDepth() + 1, 0);
-    }
-
-    private void getChildrenForRetreatShips(final Node<Event> parentNode, final ArrayList<Ship> sourceShips)
-    {
-        for(final Ship ship: sourceShips)
+        for(final Entity targetEntity: myActiveShips)
         {
-            Event event = new Event(RETREAT, new ArrayList<>(Arrays.asList(ship)), ship);
-            parentNode.addNodeToChildren(event, !parentNode.isMaxPlayer(), parentNode.getDepth() + 1, 0);
+            if (sourceEntity instanceof Ship)
+            {
+                if (targetEntity.equals((Ship)sourceEntity))
+                    continue;
+            }
+            else if (sourceEntity instanceof Fleet)
+            {
+                if (((Fleet)sourceEntity).getShips().contains(targetEntity))
+                    continue;
+
+                if (((Fleet)sourceEntity).equals(targetEntity))
+                    continue;
+            }
+
+            Event event = new Event(EventType.GROUP, sourceEntity, targetEntity);
+            parentNode.addNodeToChildren(event, isMaxPlayer, parentNode.getDepth() + 1, 0);
         }
     }
 
-    private EventType generateEventTypeForShips(final ArrayList<Ship> sourceShips, final Ship targetShip)
+    private void getChildrenForRetreatShip(final Node<Event> parentNode, final Entity sourceEntity, final Boolean isMaxPlayer)
     {
-        boolean isFriendly = (targetShip.getOwner() == sourceShips.get(0).getOwner());
-        boolean isDocking = (targetShip.getDockingStatus() != Ship.DockingStatus.Undocked);
-        return generateEventTypeInternal(isFriendly, isDocking);
+        Event event = new Event(EventType.RETREAT, sourceEntity, sourceEntity);
+        parentNode.addNodeToChildren(event, isMaxPlayer, parentNode.getDepth() + 1, 0);
     }
+
+//    private void getChildrenForTargetShips(final Node<Event> parentNode, final ArrayList<Ship> targetShips, final ArrayList<Ship> sourceShips, final Boolean isMaxPlayer)
+//    {
+//        if (sourceShips.isEmpty())
+//            return;
+//
+//        for(final Ship targetShip: targetShips)
+//        {
+//            EventType eventType = generateEventTypeForShips(sourceShips, targetShip);
+//            Event event = new Event(eventType, sourceShips, targetShip);
+//            parentNode.addNodeToChildren(event, isMaxPlayer, parentNode.getDepth() + 1, 0);
+//        }
+//    }
+
+//    private void getChildrenForRetreatShips(final Node<Event> parentNode, final ArrayList<Ship> sourceShips, final Boolean isMaxPlayer)
+//    {
+//        for(final Ship ship: sourceShips)
+//        {
+//            Event event = new Event(RETREAT, new ArrayList<>(Arrays.asList(ship)), ship);
+//            parentNode.addNodeToChildren(event, isMaxPlayer, parentNode.getDepth() + 1, 0);
+//        }
+//    }
+//
+//    private EventType generateEventTypeForShips(final ArrayList<Ship> sourceShips, final Ship targetShip)
+//    {
+//        boolean isFriendly = (targetShip.getOwner() == sourceShips.get(0).getOwner());
+//        boolean isDocking = (targetShip.getDockingStatus() != Ship.DockingStatus.Undocked);
+//        return generateEventTypeInternal(isFriendly, isDocking);
+//    }
 
     private EventType generateEventTypeForShip(final Entity sourceEntity, final Ship targetShip)
     {
         boolean isFriendly = (targetShip.getOwner() == sourceEntity.getOwner());
-        boolean isDocking = (targetShip.getDockingStatus() != Ship.DockingStatus.Undocked);
+        boolean isDocking = !targetShip.isUndocked();
         return generateEventTypeInternal(isFriendly, isDocking);
     }
 
@@ -320,70 +340,145 @@ public class Future
         {
             Node<Event> node = nodeIterator.next();
             Event event = node.getData();
+            Entity sourceEntity = event.getSourceEntity();
+            Entity targetEntity = event.getTargetEntity();
 
-            for (final Ship ship: event.getSourceEntity())
+            ArrayList<Move> newMoves = generateMoves(gameState, event.getEventType(), sourceEntity, targetEntity);
+
+            if (node.getParent().isMaxPlayer())
             {
-                Move newMove = generateMoves(gameState, event.getEventType(), ship, event.getTargetEntity());
-
-                if (!node.isMaxPlayer())
+                if (sourceEntity instanceof Ship)
                 {
-                    int indexOfCurrentShip = myShipsNextTurn.indexOf(ship);
-                    myShipsNextTurn.set(indexOfCurrentShip, applyMoveToShip(ship, newMove));
+                    int indexOfCurrentShip = myShipsNextTurn.indexOf((Ship) sourceEntity);
+                    myShipsNextTurn.set(indexOfCurrentShip, applyMoveToShip((Ship) sourceEntity, newMoves.get(0)));
+                }
+                else if (sourceEntity instanceof Fleet)
+                {
+                    Fleet fleet = (Fleet)sourceEntity;
+                    for (int i = 0; i < fleet.getShips().size(); i++)
+                    {
+                        Ship ship = fleet.getShips().get(i);
+                        int indexOfCurrentShip = myShipsNextTurn.indexOf(ship);
+                        myShipsNextTurn.set(indexOfCurrentShip, applyMoveToShip(ship, newMoves.get(i)));
+                    }
                 }
                 else
-                {
-                    int indexOfCurrentShip = enemyShipsNextTurn.indexOf(ship);
-                    enemyShipsNextTurn.set(indexOfCurrentShip, applyMoveToShip(ship, newMove));
-                }
+                    throw new IllegalStateException("Future Compute Score.");
             }
-
-            if (event.getEventType() == RETREAT)
-                break;
+            else
+            {
+                if (sourceEntity instanceof Ship)
+                {
+                    int indexOfCurrentShip = enemyShipsNextTurn.indexOf((Ship) sourceEntity);
+                    enemyShipsNextTurn.set(indexOfCurrentShip, applyMoveToShip((Ship) sourceEntity, newMoves.get(0)));
+                }
+                else if (sourceEntity instanceof Fleet)
+                {
+                    Fleet fleet = (Fleet)sourceEntity;
+                    for (int i = 0; i < fleet.getShips().size(); i++)
+                    {
+                        Ship ship = fleet.getShips().get(i);
+                        int indexOfCurrentShip = enemyShipsNextTurn.indexOf(ship);
+                        enemyShipsNextTurn.set(indexOfCurrentShip, applyMoveToShip(ship, newMoves.get(i)));
+                    }
+                }
+                else
+                    throw new IllegalStateException("Future computeScore.");
+            }
         }
 
         return CombatManager.combatBalance(myShipsNextTurn, enemyShipsNextTurn);
     }
 
-    private Move generateMoves(final GameState gameState, final EventType eventType, final Ship ship, final Entity targetEntity)
+    private ArrayList<Move> generateMoves(final GameState gameState, final EventType eventType, final Entity sourceEntity, final Entity targetEntity)
+    {
+        if (sourceEntity instanceof Ship)
+            return new ArrayList<>(Arrays.asList(generateMovesForShip(gameState, eventType, (Ship)sourceEntity, targetEntity)));
+        else if (sourceEntity instanceof Fleet)
+            return generateMovesForFleet(gameState, eventType, (Fleet) sourceEntity, targetEntity);
+        else
+            throw new IllegalStateException("Future generateMoves.");
+    }
+
+    private Move generateMovesForShip(final GameState gameState, final EventType eventType, final Ship sourceShip, final Entity targetEntity)
     {
         switch (eventType)
         {
             case ATTACK: case ATTACKDOCKED:
-                return Navigation.navigateShipToAttack(gameState, ship, targetEntity);
+                return Navigation.navigateShipToAttack(gameState, sourceShip, targetEntity);
             case GROUP: case DEFEND:
-                return Navigation.navigateShipToMove(gameState, ship, targetEntity);
+                return Navigation.navigateShipToMove(gameState, sourceShip, targetEntity);
             case RETREAT:
-                Entity retreatDirection = NavigationManager.retreatDirection(gameState, ship);
-                int retreatThrust = NavigationManager.retreatThrust(gameState, ship, retreatDirection);
-                return Navigation.navigateShipToMoveWithThrust(gameState, ship, retreatDirection, retreatThrust, 5.0);
+                Entity retreatDirection = retreatDirection(gameState, sourceShip);
+                int retreatThrust = 7; //NavigationManager.retreatThrust(gameState, sourceShip, retreatDirection);
+                return Navigation.navigateShipToMoveWithThrust(gameState, sourceShip, retreatDirection, retreatThrust, 5.0);
             default:
-                return Navigation.navigateShipToMove(gameState, ship, ship);
+                return Navigation.navigateShipToMove(gameState, sourceShip, sourceShip);
         }
     }
 
-    private ArrayList<Move> generateMovesForFleet(final GameState gameState, final EventType eventType, final Fleet fleet, final Entity targetEntity)
+    private ArrayList<Move> generateMovesForFleet(final GameState gameState, final EventType eventType, final Fleet sourceFleet, final Entity targetEntity)
     {
         switch (eventType)
         {
             case ATTACK: case ATTACKDOCKED:
-                return Navigation.navigateFleetToAttack(gameState, fleet, targetEntity);
+                return Navigation.navigateFleetToAttack(gameState, sourceFleet, targetEntity);
             case GROUP: case DEFEND:
-                return Navigation.navigateFleetToAttack(gameState, fleet, targetEntity);
+                return Navigation.navigateFleetToDefend(gameState, sourceFleet, targetEntity);
             case RETREAT:
-                return Navigation.navigateFleetToAttack(gameState, fleet, NavigationManager.retreatDirection(gameState, fleet.getCentroid()));
+                Entity retreatDirection = retreatDirection(gameState, sourceFleet.getCentroid());
+                int retreatThrust = NavigationManager.retreatThrust(gameState, sourceFleet.getCentroid(), retreatDirection);
+                return Navigation.navigateFleetToAttackWithThrust(gameState, sourceFleet, retreatDirection, retreatThrust, 5.0);
             default:
-                return Navigation.navigateFleetToAttack(gameState, fleet, targetEntity);
+                return Navigation.navigateFleetToMove(gameState, sourceFleet, sourceFleet);
         }
+    }
+
+    private CombatOperationMoves generateMovesForFleet(final GameState gameState, final LinkedList<Node<Event>> events)
+    {
+        Iterator<Node<Event>> nodeIterator = events.descendingIterator();
+
+        HashMap<Fleet, ArrayList<Move>> fleetMoves = new HashMap<>();
+        HashMap<Ship, Move> shipMoves = new HashMap<>();
+
+        while(nodeIterator.hasNext())
+        {
+            Node<Event> node = nodeIterator.next();
+            Event event = node.getData();
+            Entity sourceEntity = event.getSourceEntity();
+            Entity targetEntity = event.getTargetEntity();
+
+            ArrayList<Move> newMoves = generateMoves(gameState, event.getEventType(), sourceEntity, targetEntity);
+
+            if (sourceEntity.getOwner() == gameState.getMyId())
+            {
+                if (sourceEntity instanceof Ship)
+                    shipMoves.put((Ship)sourceEntity, newMoves.get(0));
+                else if (sourceEntity instanceof Fleet)
+                    fleetMoves.put((Fleet)sourceEntity, newMoves);
+                else
+                    throw new IllegalStateException("Future generateMovesForFleet.");
+            }
+        }
+
+        return new CombatOperationMoves(fleetMoves, shipMoves);
     }
 
     private ArrayList<Ship> copyMyShips()
     {
         ArrayList<Ship> myShipsNextTurn = new ArrayList<>();
 
-        for (final Ship ship: this.myActiveShips)
+        for (final Fleet fleet: this.myFleets)
+            for (final Ship ship: fleet.getShips())
+                myShipsNextTurn.add(new Ship(ship));
+
+        for (final Ship ship: this.myShips)
             myShipsNextTurn.add(new Ship(ship));
 
-        for (final Ship ship: this.myDockedShips)
+        for (final Ship ship: this.alliedShipsActive)
+            myShipsNextTurn.add(new Ship(ship));
+
+        for (final Ship ship: this.alliedShipsDocked)
             myShipsNextTurn.add(new Ship(ship));
 
         return myShipsNextTurn;
@@ -393,10 +488,10 @@ public class Future
     {
         ArrayList<Ship> enemyShipsNextTurn = new ArrayList<>();
 
-        for (final Ship ship: this.enemyActiveShips)
+        for (final Ship ship: this.enemyShipsActive)
             enemyShipsNextTurn.add(new Ship(ship));
 
-        for (final Ship ship: this.enemyDockedShips)
+        for (final Ship ship: this.enemyShipsDocked)
             enemyShipsNextTurn.add(new Ship(ship));
 
         return enemyShipsNextTurn;

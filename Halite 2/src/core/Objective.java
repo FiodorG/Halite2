@@ -32,6 +32,7 @@ public class Objective
     private final boolean superObjective;
     private final int Id;
     private boolean availableForFleets;
+    private boolean availableForShips;
 
     public double getPriority() { return priority; }
     public OrderType getOrderType() { return orderType; }
@@ -44,8 +45,9 @@ public class Objective
     public boolean isAttackDockedObjective() { if (this.orderType == OrderType.ATTACKDOCKED) return true; else return false; }
     public boolean isSuperObjective() { return superObjective; }
     public boolean isAvailableForFleets() { return availableForFleets; }
+    public boolean isAvailableForShips() { return availableForShips; }
 
-    public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective, final boolean availableForFleets, final int Id)
+    public Objective(final Entity targetEntity, final double priority, final int requiredShips, final OrderType orderType, final boolean superObjective, final boolean availableForFleets, final boolean availableForShips, final int Id)
     {
         this.targetEntity = targetEntity;
         this.priority = priority;
@@ -54,6 +56,7 @@ public class Objective
         this.superObjective = superObjective;
         this.Id = Id;
         this.availableForFleets = availableForFleets;
+        this.availableForShips = availableForShips;
     }
 
     @Override
